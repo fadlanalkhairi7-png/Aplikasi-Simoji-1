@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simoji — Monitoring Kenaikan Gaji Berkala</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --biru-tua:#0A3355; --biru:#125881; --biru-muda:#4A8FB8;
+  --hijau-tua:#0C5A44; --hijau:#127A5C; --hijau-muda:#37A57C;
+  --tinta:#12303C; --tinta-lembut:#4F6B76;
+  --garis:#BBD1CB; --garis-tipis:#D3E2DD; --kertas:#FBFDFC;
+  --amber:#95610B; --rust:#8C3520;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Archivo','Segoe UI',system-ui,sans-serif;
+  color:var(--tinta); font-size:15px; line-height:1.5; min-height:100vh;
+  background:linear-gradient(160deg,#DCEDE5 0%,#DFEDEF 50%,#DAE8F4 100%);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--biru);outline-offset:2px;}
+.sj-muat{padding:80px 24px;text-align:center;color:var(--tinta-lembut);}
+.sembunyi{display:none !important;}
+
+.sj-lambang{display:flex;gap:4px;align-items:flex-end;height:32px;}
+.sj-lambang span{display:block;width:6px;background:var(--biru-tua);}
+.sj-lambang span:nth-child(1){height:32px;}
+.sj-lambang span:nth-child(2){height:20px;background:var(--hijau-muda);}
+.sj-lambang span:nth-child(3){height:26px;background:var(--hijau-tua);}
+.sj-lambang-kecil{height:22px;gap:3px;}
+.sj-lambang-kecil span{width:4px;background:#fff;}
+.sj-lambang-kecil span:nth-child(1){height:22px;}
+.sj-lambang-kecil span:nth-child(2){height:13px;background:#7FD6B4;}
+.sj-lambang-kecil span:nth-child(3){height:18px;background:#B7E2D4;}
+
+/* masuk */
+.sj-masuk{display:grid;grid-template-columns:1.05fr 1fr;min-height:100vh;}
+.sj-masuk-kiri{background:linear-gradient(155deg,#0A3355 0%,#125881 50%,#0C5A44 100%);color:#E9F5F0;padding:52px 46px;display:flex;flex-direction:column;gap:10px;justify-content:center;}
+.sj-brand{font-size:50px;font-weight:700;letter-spacing:-0.03em;margin:10px 0 0;}
+.sj-brand-sub{font-family:'Archivo Narrow',sans-serif;font-size:17px;color:#A6CADB;margin:0;}
+.sj-masuk-teks{max-width:40ch;color:#CDE5DC;margin:16px 0 0;}
+.sj-masuk-daftar{max-width:42ch;margin:22px 0 0;padding:16px 0 0 18px;border-top:1px solid rgba(255,255,255,.22);color:#A8C7C6;font-size:13px;line-height:1.7;}
+.sj-masuk-kanan{padding:52px 46px;display:flex;flex-direction:column;gap:16px;justify-content:center;max-width:560px;background:rgba(255,255,255,.62);}
+.sj-tabs{display:flex;border-bottom:1px solid var(--garis);}
+.sj-tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 2px;margin-right:26px;font:inherit;color:var(--tinta-lembut);cursor:pointer;}
+.sj-tab.aktif{color:var(--biru-tua);border-bottom-color:var(--hijau);font-weight:600;}
+.sj-segmen{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--garis);border-radius:2px;overflow:hidden;background:#fff;}
+.sj-segmen button{padding:11px 10px;background:none;border:none;font:inherit;font-size:14px;color:var(--tinta-lembut);cursor:pointer;}
+.sj-segmen button + button{border-left:1px solid var(--garis);}
+.sj-segmen button.aktif{background:var(--biru-tua);color:#EAF5F1;font-weight:600;}
+
+/* bilah & nav */
+.sj-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;background:var(--biru-tua);border-bottom:3px solid var(--hijau);color:#E9F5F0;flex-wrap:wrap;}
+.sj-bar-kiri{display:flex;align-items:center;gap:12px;}
+.sj-bar-nama{font-weight:700;font-size:20px;letter-spacing:-0.02em;line-height:1.1;}
+.sj-bar-sub{font-family:'Archivo Narrow',sans-serif;font-size:13px;color:#A6CADB;}
+.sj-bar-kanan{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.sj-pengguna{font-size:14px;}
+.sj-bar-nip{font-family:'Archivo Narrow',sans-serif;color:#A6CADB;}
+.sj-bar .sj-btn-teks{color:#C4E5D9;}
+.sj-bar .sj-btn-teks:hover{color:#fff;}
+.sj-nav{display:flex;background:rgba(255,255,255,.72);border-bottom:1px solid var(--garis);padding:0 28px;overflow-x:auto;}
+.sj-navbtn{background:none;border:none;border-bottom:3px solid transparent;padding:12px 4px;margin-right:26px;font:inherit;color:var(--tinta-lembut);cursor:pointer;white-space:nowrap;}
+.sj-navbtn.aktif{color:var(--biru-tua);border-bottom-color:var(--hijau);font-weight:600;}
+.sj-kabar{padding:10px 28px;background:var(--hijau-tua);color:#EAF6F1;font-size:14px;}
+.sj-isi{padding:26px 28px;max-width:1120px;margin:0 auto;}
+.sj-kaki{padding:20px 28px 40px;max-width:1120px;margin:0 auto;color:var(--tinta-lembut);font-size:13px;border-top:1px solid var(--garis);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+
+/* penggaris KGB */
+.sj-ruler{padding:24px 0 18px;border-bottom:1px solid var(--garis);}
+.sj-ruler-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+.sj-ruler-num{font-size:60px;font-weight:700;letter-spacing:-0.04em;line-height:1;color:var(--biru-tua);}
+.sj-ruler-unit{font-size:19px;font-weight:500;letter-spacing:0;color:var(--tinta-lembut);margin-left:8px;}
+.sj-ruler-sub{color:var(--tinta-lembut);margin-top:4px;}
+.sj-ruler-tgl{text-align:right;}
+.sj-ruler-tgl-v{font-family:'Archivo Narrow',sans-serif;font-size:20px;font-weight:600;color:var(--hijau-tua);}
+.sj-ruler-track{position:relative;height:30px;border-bottom:2px solid var(--biru-tua);}
+.sj-ruler-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(55,165,124,.24);transition:width .5s ease;}
+.sj-ruler-ticks{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:flex-end;}
+.sj-tick{width:1px;height:8px;background:var(--garis);}
+.sj-tick-mayor{height:16px;background:var(--tinta-lembut);}
+.sj-ruler-mark{position:absolute;bottom:-6px;width:2px;height:36px;background:var(--biru);transition:left .5s ease;}
+.sj-ruler-mark::after{content:"";position:absolute;top:-7px;left:-4px;width:10px;height:10px;background:var(--biru);border-radius:50%;}
+.sj-ruler-foot{display:flex;justify-content:space-between;margin-top:8px;font-family:'Archivo Narrow',sans-serif;font-size:12px;color:var(--tinta-lembut);}
+
+/* statistik */
+.sj-statbar{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--garis);background:rgba(255,255,255,.62);}
+.sj-statbar-2{grid-template-columns:repeat(2,1fr);}
+.sj-stat{padding:18px 20px;border-right:1px solid var(--garis);}
+.sj-stat:last-child{border-right:none;}
+.sj-stat-n{font-size:36px;font-weight:700;letter-spacing:-0.03em;line-height:1;color:var(--biru-tua);}
+.sj-stat-l{font-family:'Archivo Narrow',sans-serif;color:var(--tinta-lembut);margin-top:6px;font-size:14px;}
+.sj-amber{color:var(--amber);}
+.sj-hijau{color:var(--hijau);}
+.sj-biru{color:var(--biru);}
+
+/* perkakas */
+.sj-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:18px 0;flex-wrap:wrap;}
+.sj-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.sj-chip{background:rgba(255,255,255,.7);border:1px solid var(--garis);border-radius:2px;padding:6px 12px;font:inherit;font-size:13px;color:var(--tinta-lembut);cursor:pointer;}
+.sj-chip.aktif{background:var(--biru-tua);color:#EAF6F1;border-color:var(--biru-tua);}
+.sj-cari{border:1px solid var(--garis);border-radius:2px;padding:8px 12px;font:inherit;font-size:14px;background:#fff;min-width:240px;color:var(--tinta);}
+.sj-aksi-kanan{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+
+/* tabel */
+.sj-tabel{border:1px solid var(--garis);background:rgba(255,255,255,.66);}
+.sj-thead{display:grid;gap:16px;padding:9px 14px;background:rgba(10,51,85,.06);border-bottom:1px solid var(--garis);font-family:'Archivo Narrow',sans-serif;font-size:13px;color:var(--tinta-lembut);}
+.sj-trow{display:grid;gap:16px;align-items:center;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--garis-tipis);padding:12px 14px;font:inherit;color:inherit;cursor:pointer;}
+.sj-trow:last-child{border-bottom:none;}
+.sj-trow:hover{background:#fff;}
+.sj-statis{cursor:default;}
+.sj-statis:hover{background:none;}
+.sj-row3{grid-template-columns:1.4fr 1fr auto;}
+.sj-row4{grid-template-columns:1.4fr .7fr 1fr auto;}
+.sj-row5{grid-template-columns:1.5fr .9fr 1fr 1fr auto;}
+.sj-td{display:flex;flex-direction:column;min-width:0;}
+.sj-td strong{font-weight:600;}
+.sj-td-num{font-variant-numeric:tabular-nums;}
+.sj-td-status{align-items:flex-end;}
+.sj-td-aksi{flex-direction:row;gap:14px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.sj-row-meta{font-family:'Archivo Narrow',sans-serif;font-size:13px;color:var(--tinta-lembut);display:block;}
+
+/* lencana */
+.sj-badge{display:inline-block;font-family:'Archivo Narrow',sans-serif;font-size:13px;padding:3px 9px;border:1px solid;border-radius:2px;white-space:nowrap;}
+.sj-badge-biru{color:var(--biru);border-color:var(--biru-muda);background:rgba(74,143,184,.12);}
+.sj-badge-hijau{color:var(--hijau-tua);border-color:var(--hijau);background:rgba(18,122,92,.12);}
+.sj-badge-amber{color:var(--amber);border-color:var(--amber);background:rgba(149,97,11,.1);}
+.sj-badge-rust{color:var(--rust);border-color:var(--rust);background:rgba(140,53,32,.1);}
+.sj-badge-netral{color:var(--tinta-lembut);border-color:var(--garis);background:#fff;}
+
+/* panel & formulir */
+.sj-panel{background:rgba(255,255,255,.76);border:1px solid var(--garis);border-radius:2px;padding:24px;}
+.sj-panel-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.sj-panel-head h2{font-size:23px;font-weight:600;letter-spacing:-0.02em;margin:0;color:var(--biru-tua);}
+.sj-mt{margin-top:26px;}
+.sj-sub{font-family:'Archivo Narrow',sans-serif;font-size:15px;color:var(--hijau-tua);border-bottom:1px solid var(--garis);padding-bottom:6px;margin:22px 0 14px;}
+.sj-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;}
+.sj-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.sj-field > span{font-family:'Archivo Narrow',sans-serif;font-size:14px;color:var(--tinta-lembut);}
+.sj-field input,.sj-field select,.sj-field textarea{border:1px solid var(--garis);border-radius:2px;padding:9px 11px;font:inherit;font-size:15px;background:#fff;color:var(--tinta);width:100%;}
+.sj-field textarea{resize:vertical;}
+.sj-gabung{display:flex;gap:8px;}
+.sj-gabung .sj-btn{white-space:nowrap;padding:8px 14px;}
+.sj-bantuan{font-size:13px;color:var(--tinta-lembut);margin:4px 0 0;}
+.sj-bantuan code,.sj-info code{background:var(--kertas);padding:1px 5px;border:1px solid var(--garis);font-family:'Archivo Narrow',sans-serif;}
+.sj-galat{border-left:3px solid var(--rust);background:rgba(140,53,32,.08);color:var(--rust);padding:9px 12px;font-size:14px;margin:12px 0;}
+.sj-info{border-left:3px solid var(--hijau);background:rgba(18,122,92,.09);color:var(--hijau-tua);padding:9px 12px;font-size:14px;margin:12px 0;}
+.sj-kekuatan{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.sj-kekuatan-bar{display:flex;gap:4px;}
+.sj-kekuatan-bar span{width:34px;height:4px;background:var(--garis);border-radius:2px;}
+.sj-kekuatan-bar span.terisi{background:var(--amber);}
+.sj-kekuatan-bar span.terisi.t3{background:var(--hijau);}
+.sj-kekuatan-bar span.terisi.t4{background:var(--hijau-tua);}
+
+/* unggah */
+.sj-drop{width:100%;display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:20px;background:var(--kertas);border:1px dashed var(--hijau);border-radius:2px;font:inherit;color:var(--tinta);cursor:pointer;}
+.sj-drop span{font-size:13px;color:var(--tinta-lembut);}
+.sj-pratinjau{display:flex;gap:16px;align-items:flex-start;}
+.sj-pratinjau img{width:150px;height:110px;object-fit:cover;border:1px solid var(--garis);}
+.sj-pratinjau-nama{font-family:'Archivo Narrow',sans-serif;font-weight:600;}
+
+/* tombol */
+.sj-btn{font:inherit;border-radius:2px;cursor:pointer;padding:10px 18px;border:1px solid transparent;}
+.sj-btn:disabled{opacity:.5;cursor:not-allowed;}
+.sj-btn-utama{background:var(--biru-tua);color:#EAF5F1;}
+.sj-btn-utama:hover:not(:disabled){background:#082944;}
+.sj-btn-halus{background:#fff;color:var(--biru-tua);border-color:var(--biru-tua);}
+.sj-btn-setuju{background:var(--hijau);color:#fff;}
+.sj-btn-setuju:hover{background:var(--hijau-tua);}
+.sj-btn-tolak{background:none;color:var(--rust);border-color:var(--rust);}
+.sj-btn-teks{background:none;color:var(--biru);border:none;padding:6px 2px;text-decoration:underline;text-underline-offset:3px;}
+.sj-btn-teks:hover{color:var(--biru-tua);}
+.sj-aksi{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.sj-hapus{color:var(--rust);}
+.sj-kosong{padding:40px 0 32px;border-bottom:1px solid var(--garis);max-width:52ch;}
+.sj-kosong h2{font-size:27px;font-weight:600;letter-spacing:-0.02em;margin:0 0 8px;color:var(--biru-tua);}
+.sj-kosong p{color:var(--tinta-lembut);margin:0 0 18px;}
+
+/* laci */
+.sj-tirai{position:fixed;inset:0;background:rgba(10,51,85,.5);display:flex;justify-content:flex-end;z-index:40;}
+.sj-laci{width:min(560px,100%);background:var(--kertas);height:100%;overflow-y:auto;padding:24px 26px 40px;border-left:4px solid var(--hijau);animation:sj-geser .2s ease-out;}
+.sj-laci-kecil{width:min(440px,100%);}
+@keyframes sj-geser{from{transform:translateX(26px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sj-laci{animation:none}.sj-ruler-fill,.sj-ruler-mark{transition:none}}
+.sj-laci-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--garis);}
+.sj-laci-head h2{font-size:22px;font-weight:600;letter-spacing:-0.02em;margin:0;color:var(--biru-tua);}
+.sj-laci-head p{margin:4px 0 0;}
+.sj-laci-status{padding:14px 0;}
+.sj-lampiran{margin-bottom:18px;}
+.sj-lampiran-img{display:block;width:100%;padding:0;border:1px solid var(--garis);background:#fff;cursor:zoom-in;}
+.sj-lampiran-img img{display:block;width:100%;max-height:330px;object-fit:contain;background:#fff;}
+.sj-lampiran-kosong{padding:32px;text-align:center;color:var(--tinta-lembut);border:1px dashed var(--garis);font-size:14px;}
+.sj-kv{display:grid;grid-template-columns:170px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid var(--garis-tipis);align-items:baseline;}
+.sj-kv-l{font-family:'Archivo Narrow',sans-serif;font-size:14px;color:var(--tinta-lembut);}
+.sj-kv-v{font-size:15px;}
+.sj-verifikasi{margin-top:22px;padding-top:18px;border-top:2px solid var(--hijau);}
+.sj-zoom{position:fixed;inset:0;background:rgba(10,51,85,.92);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50;cursor:zoom-out;}
+.sj-zoom img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;}
+
+@media (max-width:900px){
+  .sj-masuk{grid-template-columns:1fr;}
+  .sj-masuk-kiri{padding:32px 20px;}
+  .sj-masuk-kanan{padding:26px 20px 44px;max-width:none;}
+  .sj-brand{font-size:38px;}
+  .sj-isi{padding:20px 14px;}
+  .sj-bar,.sj-nav,.sj-kabar,.sj-kaki{padding-left:14px;padding-right:14px;}
+  .sj-statbar,.sj-statbar-2{grid-template-columns:1fr 1fr;}
+  .sj-stat{padding:14px 16px;}
+  .sj-stat:nth-child(2){border-right:none;}
+  .sj-stat:nth-child(3),.sj-stat:nth-child(4){border-top:1px solid var(--garis);}
+  .sj-grid2{grid-template-columns:1fr;}
+  .sj-segmen{grid-template-columns:1fr;}
+  .sj-segmen button + button{border-left:none;border-top:1px solid var(--garis);}
+  .sj-panel{padding:16px;}
+  .sj-ruler-num{font-size:44px;}
+  .sj-thead{display:none;}
+  .sj-row3,.sj-row4,.sj-row5{grid-template-columns:1fr auto;gap:8px;}
+  .sj-row5 .sj-td:nth-child(2),.sj-row4 .sj-td:nth-child(3),.sj-row3 .sj-td:nth-child(2){display:none;}
+  .sj-td-aksi{grid-column:1 / -1;justify-content:flex-start;}
+  .sj-cari{min-width:0;flex:1;}
+  .sj-kv{grid-template-columns:1fr;gap:2px;}
+  .sj-laci{padding:18px 14px 36px;}
+  .sj-ruler-foot span:nth-child(2),.sj-ruler-foot span:nth-child(4){display:none;}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="sj-muat">Menyiapkan Simoji…</div></div>
+<div id="lapis"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   SIMOJI — versi HTML mandiri
+   ============================================================ */
+
+var V = "simoji:v3:";
+var KEY_AKUN = V + "akun", KEY_LIST = V + "pengajuan", KEY_LOG = V + "log";
+var KEY_SESI = V + "sesi", KEY_GAGAL = V + "gagal";
+function fotoKey(id){ return V + "foto:" + id; }
+
+var KODE_ADMIN = "admin123";
+var ITERASI = 210000, SESI_JAM = 8, MAKS_GAGAL = 5, KUNCI_MENIT = 10;
+
+var GOLONGAN = ["I/a","I/b","I/c","I/d","II/a","II/b","II/c","II/d","III/a","III/b","III/c","III/d","IV/a","IV/b","IV/c","IV/d","IV/e"];
+var STATUS = {
+  diajukan:{label:"Menunggu verifikasi",warna:"biru"},
+  perbaikan:{label:"Perlu perbaikan",warna:"amber"},
+  disetujui:{label:"Disetujui",warna:"hijau"},
+  ditolak:{label:"Ditolak",warna:"rust"}
+};
+
+/* ---------- penyimpanan: window.storage bila ada, kalau tidak localStorage ---------- */
+var adaGudangBersama = typeof window.storage !== "undefined" && window.storage && typeof window.storage.get === "function";
+var memori = {};
+var gudang = {
+  get: function(k, bersama){
+    if (adaGudangBersama) return window.storage.get(k, !!bersama).then(function(r){ return r ? r.value : null; }).catch(function(){ return null; });
+    try { return Promise.resolve(localStorage.getItem(k)); } catch(e){ return Promise.resolve(k in memori ? memori[k] : null); }
+  },
+  set: function(k, v, bersama){
+    if (adaGudangBersama) return window.storage.set(k, v, !!bersama);
+    try { localStorage.setItem(k, v); } catch(e){ memori[k] = v; }
+    return Promise.resolve();
+  },
+  del: function(k, bersama){
+    if (adaGudangBersama) return window.storage.delete(k, !!bersama).catch(function(){});
+    try { localStorage.removeItem(k); } catch(e){ delete memori[k]; }
+    return Promise.resolve();
+  }
+};
+
+/* ---------- utilitas ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function angkaSaja(s){ return String(s==null?"":s).replace(/[^\d]/g,""); }
+function bersihkan(s, maks){ return String(s==null?"":s).replace(/[<>]/g,"").trim().slice(0, maks||120); }
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+var BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+var BULAN_S = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+function tambahTahun(iso, n){
+  if(!iso) return "";
+  var d = new Date(iso + "T00:00:00");
+  if(isNaN(d)) return "";
+  d.setFullYear(d.getFullYear() + n);
+  return d.toISOString().slice(0,10);
+}
+function tglIndo(iso){
+  if(!iso) return "—";
+  var d = new Date(iso + "T00:00:00");
+  return isNaN(d) ? "—" : d.getDate() + " " + BULAN[d.getMonth()] + " " + d.getFullYear();
+}
+function tglSingkat(iso){
+  if(!iso) return "—";
+  var d = new Date(iso + "T00:00:00");
+  return isNaN(d) ? "—" : d.getDate() + " " + BULAN_S[d.getMonth()] + " " + d.getFullYear();
+}
+function jamTanggal(ts){
+  if(!ts) return "—";
+  var d = new Date(ts), p = function(n){ return String(n).padStart(2,"0"); };
+  return p(d.getDate()) + "/" + p(d.getMonth()+1) + "/" + d.getFullYear() + " " + p(d.getHours()) + "." + p(d.getMinutes());
+}
+function selisihHari(iso){
+  if(!iso) return null;
+  var d = new Date(iso + "T00:00:00");
+  if(isNaN(d)) return null;
+  var kini = new Date(); kini.setHours(0,0,0,0);
+  return Math.round((d - kini) / 86400000);
+}
+function rupiah(n){
+  var v = Number(n);
+  if(!v && v !== 0) return "—";
+  return "Rp " + v.toLocaleString("id-ID");
+}
+function waktuRelatif(ts){
+  if(!ts) return "—";
+  var d = Math.floor((Date.now() - ts) / 1000);
+  if(d < 60) return "baru saja";
+  if(d < 3600) return Math.floor(d/60) + " menit lalu";
+  if(d < 86400) return Math.floor(d/3600) + " jam lalu";
+  return Math.floor(d/86400) + " hari lalu";
+}
+function nilaiSandi(s){
+  var n = 0;
+  if(s.length >= 8) n++;
+  if(s.length >= 12) n++;
+  if(/[a-z]/.test(s) && /[A-Z]/.test(s)) n++;
+  if(/\d/.test(s)) n++;
+  if(/[^A-Za-z0-9]/.test(s)) n++;
+  return Math.min(n,4);
+}
+function periksaSandi(s){
+  if(s.length < 8) return "Kata sandi minimal 8 karakter.";
+  if(!/[A-Za-z]/.test(s) || !/\d/.test(s)) return "Kata sandi harus memuat huruf dan angka.";
+  if(/^(123|password|admin|qwerty)/i.test(s)) return "Kata sandi terlalu mudah ditebak.";
+  return "";
+}
+function sandiAcak(){
+  var abjad = "abcdefghjkmnpqrstuvwxyz", angka = "23456789", s = "";
+  for(var i=0;i<6;i++) s += abjad[Math.floor(Math.random()*abjad.length)];
+  for(var j=0;j<3;j++) s += angka[Math.floor(Math.random()*angka.length)];
+  return s + "A";
+}
+
+/* ---------- kriptografi ---------- */
+var sandiBisa = typeof crypto !== "undefined" && crypto.subtle;
+function teksKe(s){ return new TextEncoder().encode(s); }
+function keB64(u8){
+  var s = "", potong = 0x8000;
+  for(var i=0;i<u8.length;i+=potong) s += String.fromCharCode.apply(null, u8.subarray(i, i+potong));
+  return btoa(s);
+}
+function dariB64(s){
+  var bin = atob(s), u8 = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function garamBaru(){
+  var u8 = new Uint8Array(16);
+  if(sandiBisa) crypto.getRandomValues(u8);
+  else for(var i=0;i<16;i++) u8[i] = Math.floor(Math.random()*256);
+  return keB64(u8);
+}
+function turunkanSandi(sandi, garamB64, iterasi){
+  iterasi = iterasi || ITERASI;
+  if(!sandiBisa){
+    var h = 5381, t = garamB64 + "|" + sandi;
+    for(var i=0;i<t.length;i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0;
+    return Promise.resolve("lemah:" + h.toString(16));
+  }
+  return crypto.subtle.importKey("raw", teksKe(sandi), "PBKDF2", false, ["deriveBits"])
+    .then(function(bahan){
+      return crypto.subtle.deriveBits(
+        { name:"PBKDF2", salt: dariB64(garamB64), iterations: iterasi, hash:"SHA-256" }, bahan, 256);
+    })
+    .then(function(bit){ return keB64(new Uint8Array(bit)); });
+}
+function samaAman(a, b){
+  if(typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  var beda = 0;
+  for(var i=0;i<a.length;i++) beda |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return beda === 0;
+}
+var _kunci = null;
+function kunciSimpan(){
+  if(_kunci) return Promise.resolve(_kunci);
+  return crypto.subtle.importKey("raw", teksKe("simoji-penyandi-lokal"), "PBKDF2", false, ["deriveKey"])
+    .then(function(bahan){
+      return crypto.subtle.deriveKey(
+        { name:"PBKDF2", salt: teksKe("simoji-garam-simpanan"), iterations:120000, hash:"SHA-256" },
+        bahan, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
+    })
+    .then(function(k){ _kunci = k; return k; });
+}
+function sandikan(nilai){
+  var teks = JSON.stringify(nilai);
+  if(!sandiBisa) return Promise.resolve("polos." + teks);
+  var iv = crypto.getRandomValues(new Uint8Array(12));
+  return kunciSimpan().then(function(k){
+    return crypto.subtle.encrypt({ name:"AES-GCM", iv: iv }, k, teksKe(teks));
+  }).then(function(ct){
+    return "aes." + keB64(iv) + "." + keB64(new Uint8Array(ct));
+  });
+}
+function bukaSandi(teks){
+  if(typeof teks !== "string") return Promise.resolve(null);
+  if(teks.indexOf("polos.") === 0) return Promise.resolve(JSON.parse(teks.slice(6)));
+  if(teks.indexOf("aes.") !== 0) return Promise.resolve(JSON.parse(teks));
+  var bagian = teks.split(".");
+  return kunciSimpan().then(function(k){
+    return crypto.subtle.decrypt({ name:"AES-GCM", iv: dariB64(bagian[1]) }, k, dariB64(bagian[2]));
+  }).then(function(buf){
+    return JSON.parse(new TextDecoder().decode(buf));
+  });
+}
+
+/* ---------- baca / tulis terenkripsi ---------- */
+function bacaAman(kunci, bawaan){
+  return gudang.get(kunci, true).then(function(v){
+    if(!v) return bawaan;
+    return bukaSandi(v);
+  }).then(function(isi){
+    return (isi === null || isi === undefined) ? bawaan : isi;
+  }).catch(function(){ return bawaan; });
+}
+function tulisAman(kunci, nilai){
+  return sandikan(nilai).then(function(t){ return gudang.set(kunci, t, true); });
+}
+function ambilAkun(){ return bacaAman(KEY_AKUN, []).then(function(a){ return Array.isArray(a) ? a : []; }); }
+function simpanAkun(a){ return tulisAman(KEY_AKUN, a); }
+function ambilDaftar(){ return bacaAman(KEY_LIST, []).then(function(a){ return Array.isArray(a) ? a : []; }); }
+function simpanDaftar(d){ return tulisAman(KEY_LIST, d); }
+function ambilLog(){ return bacaAman(KEY_LOG, []).then(function(a){ return Array.isArray(a) ? a : []; }); }
+function catat(aktor, aksi, rincian){
+  return ambilLog().then(function(log){
+    return tulisAman(KEY_LOG, [{ ts: Date.now(), aktor: aktor, aksi: aksi, rincian: rincian || "" }].concat(log).slice(0,300));
+  }).catch(function(){});
+}
+
+/* ---------- pengunci percobaan masuk ---------- */
+function cekKunci(){
+  return gudang.get(KEY_GAGAL, false).then(function(v){
+    if(!v) return 0;
+    var d = JSON.parse(v);
+    if(d.jumlah >= MAKS_GAGAL && Date.now() - d.ts < KUNCI_MENIT*60000){
+      return Math.ceil((KUNCI_MENIT*60000 - (Date.now() - d.ts)) / 60000);
+    }
+    return 0;
+  }).catch(function(){ return 0; });
+}
+function tandaiGagal(){
+  return gudang.get(KEY_GAGAL, false).then(function(v){
+    var d = v ? JSON.parse(v) : { jumlah:0, ts: Date.now() };
+    var baru = (Date.now() - d.ts > KUNCI_MENIT*60000) ? { jumlah:1, ts: Date.now() } : { jumlah: d.jumlah+1, ts: d.ts };
+    return gudang.set(KEY_GAGAL, JSON.stringify(baru), false).then(function(){ return MAKS_GAGAL - baru.jumlah; });
+  }).catch(function(){ return MAKS_GAGAL; });
+}
+function hapusGagal(){ return gudang.del(KEY_GAGAL, false); }
+
+/* ---------- gambar ---------- */
+function kompresGambar(file, maxDim, mutu){
+  maxDim = maxDim || 1200; mutu = mutu || 0.7;
+  return new Promise(function(resolve, reject){
+    var fr = new FileReader();
+    fr.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var w = img.width, h = img.height;
+        var skala = Math.min(1, maxDim / Math.max(w,h));
+        w = Math.round(w*skala); h = Math.round(h*skala);
+        var c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        var ctx = c.getContext("2d");
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL("image/jpeg", mutu));
+      };
+      img.onerror = function(){ reject(new Error("Berkas itu bukan gambar yang bisa dibaca.")); };
+      img.src = fr.result;
+    };
+    fr.onerror = function(){ reject(new Error("Berkas gagal dibuka. Coba pilih ulang.")); };
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+   Keadaan aplikasi
+   ============================================================ */
+var S = {
+  sesi:null, daftar:[], akun:[], log:[],
+  tab:"beranda", memuat:true,
+  mode:"masuk", peranPilih:"pegawai", adaAdmin:null,
+  saring:"semua", cari:"", foto:null, namaFoto:"", hasilReset:null
+};
+var app = document.getElementById("app");
+var lapis = document.getElementById("lapis");
+
+function q(sel, akar){ return (akar||document).querySelector(sel); }
+function qq(sel, akar){ return Array.prototype.slice.call((akar||document).querySelectorAll(sel)); }
+function nilai(id){ var e = q("#"+id); return e ? e.value : ""; }
+function pasang(sel, ev, fn, akar){ qq(sel, akar).forEach(function(e){ e.addEventListener(ev, fn); }); }
+function tampilGalat(pesan){
+  var e = q("#galat");
+  if(!e) return;
+  e.textContent = pesan || "";
+  e.className = pesan ? "sj-galat" : "sembunyi";
+}
+var jamKabar = null;
+function kabar(pesan){
+  var e = q("#kabar");
+  if(!e) return;
+  e.textContent = pesan;
+  e.className = "sj-kabar";
+  clearTimeout(jamKabar);
+  jamKabar = setTimeout(function(){ if(q("#kabar")){ q("#kabar").className = "sembunyi"; } }, 3800);
+}
+
+/* ============================================================
+   Potongan tampilan
+   ============================================================ */
+function lencana(status){
+  var s = STATUS[status] || STATUS.diajukan;
+  return '<span class="sj-badge sj-badge-' + s.warna + '">' + s.label + '</span>';
+}
+function baris(label, isi){
+  return '<div class="sj-kv"><span class="sj-kv-l">' + esc(label) + '</span><span class="sj-kv-v">' + isi + '</span></div>';
+}
+function pilihanGolongan(terpilih){
+  return GOLONGAN.map(function(g){
+    return '<option value="' + g + '"' + (g === terpilih ? " selected" : "") + '>' + g + '</option>';
+  }).join("");
+}
+function penggaris(tmtLama, tmtBaru){
+  var total = 24, terpakai = 0;
+  if(tmtLama && tmtBaru){
+    var a = new Date(tmtLama + "T00:00:00"), b = new Date(tmtBaru + "T00:00:00");
+    var rentang = b - a;
+    terpakai = Math.max(0, Math.min(1, rentang > 0 ? (new Date() - a) / rentang : 0)) * total;
+  }
+  var sisa = selisihHari(tmtBaru), persen = (terpakai/total)*100, ticks = "";
+  for(var i=0;i<=total;i++) ticks += '<span class="sj-tick' + (i % 6 === 0 ? " sj-tick-mayor" : "") + '"></span>';
+  return '<section class="sj-ruler">' +
+    '<div class="sj-ruler-head"><div>' +
+      '<div class="sj-ruler-num">' + (sisa === null ? "—" : Math.abs(sisa)) +
+      '<span class="sj-ruler-unit">' + (sisa === null ? "" : (sisa >= 0 ? " hari lagi" : " hari terlewat")) + '</span></div>' +
+      '<div class="sj-ruler-sub">Menuju kenaikan gaji berkala berikutnya</div></div>' +
+      '<div class="sj-ruler-tgl"><div class="sj-kv-l">Terhitung mulai</div>' +
+      '<div class="sj-ruler-tgl-v">' + tglIndo(tmtBaru) + '</div></div></div>' +
+    '<div class="sj-ruler-track"><div class="sj-ruler-fill" style="width:' + persen + '%"></div>' +
+      '<div class="sj-ruler-ticks">' + ticks + '</div>' +
+      '<div class="sj-ruler-mark" style="left:' + persen + '%"></div></div>' +
+    '<div class="sj-ruler-foot"><span>' + tglSingkat(tmtLama) + '</span><span>bulan ke-6</span>' +
+      '<span>bulan ke-12</span><span>bulan ke-18</span><span>' + tglSingkat(tmtBaru) + '</span></div>' +
+  '</section>';
+}
+function barKekuatan(sandi){
+  var n = nilaiSandi(sandi);
+  var teks = ["Sangat lemah","Lemah","Cukup","Kuat","Sangat kuat"][n];
+  var kotak = "";
+  for(var i=0;i<4;i++) kotak += '<span class="' + (i < n ? "terisi t" + n : "") + '"></span>';
+  return '<div class="sj-kekuatan-bar">' + kotak + '</div><span class="sj-row-meta">' + (sandi ? teks : "") + '</span>';
+}
+
+/* ============================================================
+   Layar masuk
+   ============================================================ */
+function gambarMasuk(){
+  var daftarMode = S.mode === "daftar";
+  var adminPertama = S.peranPilih === "admin" && S.adaAdmin === false;
+  app.innerHTML =
+  '<div class="sj-masuk">' +
+    '<aside class="sj-masuk-kiri">' +
+      '<div class="sj-lambang"><span></span><span></span><span></span></div>' +
+      '<h1 class="sj-brand">Simoji</h1>' +
+      '<p class="sj-brand-sub">Sistem monitoring kenaikan gaji berkala</p>' +
+      '<p class="sj-masuk-teks">Pegawai mencatat SK berkala terakhir beserta pindaiannya. Bagian kepegawaian memeriksa berkas yang masuk, lalu menyetujui atau mengembalikannya untuk diperbaiki.</p>' +
+      '<ul class="sj-masuk-daftar">' +
+        '<li>Kata sandi disimpan sebagai turunan PBKDF2 bergaram, bukan teks asli.</li>' +
+        '<li>Isi berkas dan lampiran disandikan AES-GCM sebelum masuk penyimpanan.</li>' +
+        '<li>Percobaan masuk dibatasi ' + MAKS_GAGAL + ' kali sebelum dikunci ' + KUNCI_MENIT + ' menit.</li>' +
+        (adaGudangBersama ? "" : '<li>Data tersimpan di peramban ini saja dan tidak dikirim ke server mana pun, jadi admin dan pegawai perlu memakai peramban yang sama.</li>') +
+      '</ul>' +
+    '</aside>' +
+    '<section class="sj-masuk-kanan">' +
+      '<div class="sj-tabs" role="tablist">' +
+        '<button class="sj-tab' + (!daftarMode ? " aktif" : "") + '" data-mode="masuk">Masuk</button>' +
+        '<button class="sj-tab' + (daftarMode ? " aktif" : "") + '" data-mode="daftar">Buat akun</button>' +
+      '</div>' +
+      '<div class="sj-segmen" role="group" aria-label="Pilih peran">' +
+        '<button data-peran="pegawai" class="' + (S.peranPilih === "pegawai" ? "aktif" : "") + '">' +
+          (daftarMode ? "Daftar sebagai pegawai" : "Masuk sebagai pegawai") + '</button>' +
+        '<button data-peran="admin" class="' + (S.peranPilih === "admin" ? "aktif" : "") + '">' +
+          (daftarMode ? "Daftar sebagai admin" : "Masuk sebagai admin") + '</button>' +
+      '</div>' +
+      '<div class="sj-form">' +
+        (daftarMode ? '<label class="sj-field"><span>Nama lengkap</span><input id="m-nama" placeholder="Siti Rahmawati, S.Pd."></label>' : "") +
+        '<label class="sj-field"><span>NIP</span><input id="m-nip" inputmode="numeric" autocomplete="username" placeholder="198703142010012001"></label>' +
+        '<label class="sj-field"><span>Kata sandi</span>' +
+          '<input id="m-sandi" type="password" autocomplete="' + (daftarMode ? "new-password" : "current-password") + '" placeholder="' +
+          (daftarMode ? "Huruf dan angka, minimal 8 karakter" : "••••••••") + '">' +
+          (daftarMode ? '<span class="sj-kekuatan" id="m-kekuatan">' + barKekuatan("") + '</span>' : "") +
+        '</label>' +
+        (daftarMode ? '<label class="sj-field"><span>Ulangi kata sandi</span><input id="m-ulangi" type="password" autocomplete="new-password" placeholder="••••••••"></label>' : "") +
+        (daftarMode && S.peranPilih === "admin" && S.adaAdmin === true
+          ? '<label class="sj-field"><span>Kode admin</span><input id="m-kode" type="password" placeholder="••••••••">' +
+            '<span class="sj-bantuan">Kode bawaan untuk uji coba: <code>' + KODE_ADMIN + '</code>. Admin yang sudah ada juga bisa membuatkan akun langsung dari panelnya.</span></label>'
+          : "") +
+        (daftarMode && adminPertama ? '<p class="sj-info">Belum ada admin sama sekali, jadi akun admin pertama bisa dibuat tanpa kode.</p>' : "") +
+      '</div>' +
+      '<div id="galat" class="sembunyi"></div>' +
+      '<button class="sj-btn sj-btn-utama" id="m-kirim">' +
+        (daftarMode ? "Buat akun" : "Masuk sebagai " + S.peranPilih) + '</button>' +
+      (!sandiBisa ? '<p class="sj-galat">Peramban ini tidak menyediakan Web Crypto, jadi penyandian dimatikan. Buka lewat https atau localhost.</p>' : "") +
+    '</section>' +
+  '</div>';
+
+  pasang(".sj-tab", "click", function(){ S.mode = this.dataset.mode; gambarMasuk(); });
+  pasang(".sj-segmen button", "click", function(){ S.peranPilih = this.dataset.peran; gambarMasuk(); });
+  var sandiInput = q("#m-sandi");
+  if(sandiInput && q("#m-kekuatan")){
+    sandiInput.addEventListener("input", function(){ q("#m-kekuatan").innerHTML = barKekuatan(this.value); });
+  }
+  if(sandiInput && !daftarMode){
+    sandiInput.addEventListener("keydown", function(e){ if(e.key === "Enter") q("#m-kirim").click(); });
+  }
+  q("#m-kirim").addEventListener("click", daftarMode ? kirimDaftar : kirimMasuk);
+  cekKunci().then(function(m){ if(m > 0) tampilGalat("Akses dikunci sementara, coba lagi " + m + " menit lagi."); });
+}
+
+function kirimMasuk(){
+  var tombol = q("#m-kirim");
+  tampilGalat("");
+  cekKunci().then(function(kunci){
+    if(kunci) { tampilGalat("Terlalu banyak percobaan gagal. Coba lagi " + kunci + " menit lagi."); return; }
+    var n = angkaSaja(nilai("m-nip")), sandi = nilai("m-sandi");
+    if(!n || !sandi){ tampilGalat("Isi NIP dan kata sandi."); return; }
+    tombol.disabled = true; tombol.textContent = "Memproses…";
+    return ambilAkun().then(function(akun){
+      var cocok = null;
+      for(var i=0;i<akun.length;i++) if(akun[i].nip === n) cocok = akun[i];
+      var p = cocok ? turunkanSandi(sandi, cocok.garam, cocok.iterasi) : Promise.resolve("");
+      return p.then(function(hash){
+        if(!cocok || !samaAman(hash, cocok.hash)){
+          return tandaiGagal().then(function(sisa){
+            tampilGalat(sisa > 0
+              ? "NIP atau kata sandi salah. Sisa " + sisa + " percobaan."
+              : "Akses dikunci " + KUNCI_MENIT + " menit karena terlalu banyak percobaan.");
+          });
+        }
+        if(cocok.peran !== S.peranPilih){
+          tampilGalat('Akun ini terdaftar sebagai ' + cocok.peran + '. Pilih "Masuk sebagai ' + cocok.peran + '".');
+          return;
+        }
+        cocok.terakhirMasuk = Date.now();
+        return hapusGagal()
+          .then(function(){ return simpanAkun(akun); })
+          .then(function(){ return catat(cocok.nama, "Masuk", "sebagai " + cocok.peran); })
+          .then(function(){ return masuk(cocok); });
+      });
+    }).catch(function(){ tampilGalat("Gagal membaca data akun. Coba lagi."); });
+  }).then(function(){
+    if(q("#m-kirim")){ tombol.disabled = false; tombol.textContent = "Masuk sebagai " + S.peranPilih; }
+  });
+}
+
+function kirimDaftar(){
+  var tombol = q("#m-kirim");
+  tampilGalat("");
+  var nama = bersihkan(nilai("m-nama")), n = angkaSaja(nilai("m-nip"));
+  var sandi = nilai("m-sandi"), ulangi = nilai("m-ulangi"), kode = nilai("m-kode");
+  if(nama.length < 3) return tampilGalat("Tulis nama lengkap Anda.");
+  if(n.length < 8) return tampilGalat("NIP minimal 8 angka.");
+  var pesan = periksaSandi(sandi);
+  if(pesan) return tampilGalat(pesan);
+  if(sandi !== ulangi) return tampilGalat("Ulangan kata sandi belum sama.");
+  if(S.peranPilih === "admin" && S.adaAdmin === true && kode.trim() !== KODE_ADMIN)
+    return tampilGalat("Kode admin tidak cocok.");
+
+  tombol.disabled = true; tombol.textContent = "Memproses…";
+  ambilAkun().then(function(akun){
+    for(var i=0;i<akun.length;i++) if(akun[i].nip === n){
+      tampilGalat("NIP ini sudah punya akun. Silakan masuk.");
+      throw "berhenti";
+    }
+    var garam = garamBaru();
+    return turunkanSandi(sandi, garam).then(function(hash){
+      var baru = {
+        id: uid(), nip: n, nama: nama, peran: S.peranPilih,
+        garam: garam, iterasi: ITERASI, hash: hash,
+        profil: {}, wajibGanti: false, dibuat: Date.now(), terakhirMasuk: Date.now()
+      };
+      return simpanAkun(akun.concat([baru]))
+        .then(function(){ return catat(nama, "Buat akun", "peran " + S.peranPilih); })
+        .then(hapusGagal)
+        .then(function(){ return masuk(baru); });
+    });
+  }).catch(function(e){
+    if(e !== "berhenti") tampilGalat("Akun gagal disimpan. Coba lagi.");
+  }).then(function(){
+    if(q("#m-kirim")){ tombol.disabled = false; tombol.textContent = "Buat akun"; }
+  });
+}
+
+/* ============================================================
+   Sesi
+   ============================================================ */
+function masuk(akun){
+  S.sesi = akun;
+  S.tab = "beranda";
+  return gudang.set(KEY_SESI, JSON.stringify({ id: akun.id, kedaluwarsa: Date.now() + SESI_JAM*3600000 }), false)
+    .then(muatData)
+    .then(function(){
+      gambar();
+      if(akun.wajibGanti) bukaUbahSandi(true);
+    });
+}
+function keluar(){
+  var nama = S.sesi ? S.sesi.nama : "";
+  catat(nama, "Keluar", "");
+  S.sesi = null; S.daftar = []; S.akun = []; S.log = [];
+  gudang.del(KEY_SESI, false).then(function(){
+    return ambilAkun();
+  }).then(function(a){
+    S.adaAdmin = a.some(function(x){ return x.peran === "admin"; });
+    S.mode = "masuk";
+    gambarMasuk();
+  });
+}
+function muatData(){
+  S.memuat = true;
+  return ambilDaftar().then(function(d){
+    d.sort(function(a,b){ return (b.dibuat||0) - (a.dibuat||0); });
+    S.daftar = d;
+    if(S.sesi && S.sesi.peran === "admin"){
+      return ambilAkun().then(function(a){
+        a.sort(function(x,y){ return (y.dibuat||0) - (x.dibuat||0); });
+        S.akun = a;
+        return ambilLog();
+      }).then(function(l){ S.log = l; });
+    }
+  }).then(function(){ S.memuat = false; });
+}
+
+/* ============================================================
+   Kerangka aplikasi
+   ============================================================ */
+function gambar(){
+  if(!S.sesi) return gambarMasuk();
+  var menu = S.sesi.peran === "admin"
+    ? [["beranda","Berkas pengajuan"],["akun","Akun pengguna"],["log","Log aktivitas"]]
+    : [["beranda","Beranda"],["ajukan","Pengajuan baru"],["profil","Profil"]];
+
+  app.innerHTML =
+  '<header class="sj-bar">' +
+    '<div class="sj-bar-kiri"><div class="sj-lambang sj-lambang-kecil"><span></span><span></span><span></span></div>' +
+      '<div><div class="sj-bar-nama">Simoji</div><div class="sj-bar-sub">' +
+      (S.sesi.peran === "admin" ? "Panel kepegawaian" : "Panel pegawai") + '</div></div></div>' +
+    '<div class="sj-bar-kanan"><span class="sj-pengguna">' + esc(S.sesi.nama) +
+      '<span class="sj-bar-nip"> · ' + esc(S.sesi.nip) + '</span></span>' +
+      '<button class="sj-btn sj-btn-teks" id="b-sandi">Ubah sandi</button>' +
+      '<button class="sj-btn sj-btn-teks" id="b-keluar">Keluar</button></div>' +
+  '</header>' +
+  '<nav class="sj-nav">' + menu.map(function(m){
+      return '<button class="sj-navbtn' + (S.tab === m[0] ? " aktif" : "") + '" data-tab="' + m[0] + '">' + m[1] + '</button>';
+    }).join("") + '</nav>' +
+  '<div id="kabar" class="sembunyi"></div>' +
+  '<main class="sj-isi" id="isi"></main>' +
+  '<footer class="sj-kaki"><span>Kenaikan gaji berkala dihitung setiap dua tahun sejak TMT terakhir. Pengajuan sebaiknya dikirim dua bulan sebelum jatuh tempo.</span>' +
+  '<span class="sj-row-meta">Sesi berakhir otomatis setelah ' + SESI_JAM + ' jam. ' +
+    (adaGudangBersama ? "Data tersimpan di penyimpanan bersama." : "Data tersimpan lokal di peramban ini.") + '</span></footer>';
+
+  q("#b-keluar").addEventListener("click", keluar);
+  q("#b-sandi").addEventListener("click", function(){ bukaUbahSandi(false); });
+  pasang(".sj-navbtn", "click", function(){ S.tab = this.dataset.tab; gambarIsi(); });
+  gambarIsi();
+}
+
+function gambarIsi(){
+  qq(".sj-navbtn").forEach(function(b){ b.classList.toggle("aktif", b.dataset.tab === S.tab); });
+  if(S.sesi.peran === "admin"){
+    if(S.tab === "akun") return isiAkun();
+    if(S.tab === "log") return isiLog();
+    return isiBerkas();
+  }
+  if(S.tab === "ajukan") return isiForm();
+  if(S.tab === "profil") return isiProfil();
+  return isiBeranda();
+}
+
+/* ============================================================
+   Pegawai — beranda
+   ============================================================ */
+function isiBeranda(){
+  var milik = S.daftar.filter(function(d){ return d.nip === S.sesi.nip; });
+  var terakhir = milik[0];
+  var html = terakhir ? penggaris(terakhir.tmtLama, terakhir.tmtBaru)
+    : '<div class="sj-kosong"><h2>Belum ada pengajuan atas nama Anda</h2>' +
+      '<p>Catat SK berkala terakhir Anda sekali, lalu Simoji menghitung sendiri kapan berkala berikutnya jatuh tempo.</p>' +
+      '<button class="sj-btn sj-btn-utama" id="b-ajukan1">Ajukan sekarang</button></div>';
+
+  html += '<div class="sj-panel-head sj-mt"><h2>Riwayat pengajuan</h2><div class="sj-aksi-kanan">' +
+    '<button class="sj-btn sj-btn-teks" id="b-segar">Muat ulang</button>' +
+    '<button class="sj-btn sj-btn-utama" id="b-ajukan2">Pengajuan baru</button></div></div>';
+
+  if(!milik.length){
+    html += '<p class="sj-bantuan">Riwayat muncul di sini setelah pengajuan pertama terkirim.</p>';
+  } else {
+    html += '<div class="sj-tabel"><div class="sj-thead sj-row3"><span>Berlaku mulai</span><span>Gaji usulan</span><span>Status</span></div>' +
+      milik.map(function(d){
+        return '<button class="sj-trow sj-row3" data-id="' + d.id + '">' +
+          '<span class="sj-td"><strong>' + tglSingkat(d.tmtBaru) + '</strong><span class="sj-row-meta">' +
+            esc(d.pangkat) + ' · ' + esc(d.golongan) + ' · ' + esc(d.unit) + '</span></span>' +
+          '<span class="sj-td sj-td-num">' + rupiah(d.gajiBaru || d.gajiLama) +
+            '<span class="sj-row-meta">dikirim ' + waktuRelatif(d.dibuat) + '</span></span>' +
+          '<span class="sj-td sj-td-status">' + lencana(d.status) + '</span></button>';
+      }).join("") + '</div>';
+  }
+
+  q("#isi").innerHTML = html;
+  ["b-ajukan1","b-ajukan2"].forEach(function(id){
+    if(q("#"+id)) q("#"+id).addEventListener("click", function(){ S.tab = "ajukan"; gambarIsi(); });
+  });
+  q("#b-segar").addEventListener("click", function(){ muatData().then(gambarIsi); });
+  pasang(".sj-trow", "click", function(){ bukaDetail(this.dataset.id, "pegawai"); }, q("#isi"));
+}
+
+/* ============================================================
+   Pegawai — profil
+   ============================================================ */
+function isiProfil(){
+  var p = S.sesi.profil || {};
+  q("#isi").innerHTML =
+  '<div class="sj-panel"><div class="sj-panel-head"><h2>Profil kepegawaian</h2>' +
+    '<span class="sj-row-meta">NIP ' + esc(S.sesi.nip) + '</span></div>' +
+    '<p class="sj-bantuan">Data di sini terisi otomatis setiap kali Anda membuat pengajuan baru, jadi tidak perlu diketik ulang.</p>' +
+    '<div class="sj-grid2 sj-mt">' +
+      '<label class="sj-field"><span>Nama lengkap</span><input id="p-nama" value="' + esc(S.sesi.nama) + '"></label>' +
+      '<label class="sj-field"><span>Nomor telepon</span><input id="p-hp" inputmode="numeric" value="' + esc(p.noHp||"") + '" placeholder="08123456789"></label>' +
+      '<label class="sj-field"><span>Pangkat</span><input id="p-pangkat" value="' + esc(p.pangkat||"") + '" placeholder="Penata Muda Tingkat I"></label>' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="p-golongan">' + pilihanGolongan(p.golongan||"III/a") + '</select></label>' +
+      '<label class="sj-field"><span>Jabatan</span><input id="p-jabatan" value="' + esc(p.jabatan||"") + '" placeholder="Guru Ahli Pertama"></label>' +
+      '<label class="sj-field"><span>Unit kerja</span><input id="p-unit" value="' + esc(p.unit||"") + '" placeholder="SMPN 3 Medan"></label>' +
+      '<label class="sj-field"><span>Satuan kerja induk</span><input id="p-satker" value="' + esc(p.satker||"") + '" placeholder="Dinas Pendidikan Kota Medan"></label>' +
+      '<div class="sj-grid2">' +
+        '<label class="sj-field"><span>Masa kerja (tahun)</span><input id="p-mkt" inputmode="numeric" value="' + esc(p.masaKerjaTahun||"") + '" placeholder="10"></label>' +
+        '<label class="sj-field"><span>Bulan</span><input id="p-mkb" inputmode="numeric" value="' + esc(p.masaKerjaBulan||"") + '" placeholder="4"></label>' +
+      '</div>' +
+    '</div>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="p-simpan">Simpan profil</button></div>' +
+  '</div>';
+
+  q("#p-simpan").addEventListener("click", function(){
+    var tombol = this;
+    var nama = bersihkan(nilai("p-nama"));
+    if(nama.length < 3) return tampilGalat("Nama tidak boleh kosong.");
+    var profil = {
+      noHp: angkaSaja(nilai("p-hp")).slice(0,15),
+      pangkat: bersihkan(nilai("p-pangkat")),
+      golongan: nilai("p-golongan"),
+      jabatan: bersihkan(nilai("p-jabatan")),
+      unit: bersihkan(nilai("p-unit")),
+      satker: bersihkan(nilai("p-satker")),
+      masaKerjaTahun: angkaSaja(nilai("p-mkt")).slice(0,2),
+      masaKerjaBulan: angkaSaja(nilai("p-mkb")).slice(0,2)
+    };
+    tombol.disabled = true;
+    ambilAkun().then(function(semua){
+      var baru = semua.map(function(a){ return a.id === S.sesi.id ? Object.assign({}, a, { nama: nama, profil: profil }) : a; });
+      return simpanAkun(baru).then(function(){
+        S.sesi.nama = nama; S.sesi.profil = profil;
+        return catat(nama, "Perbarui profil", "");
+      });
+    }).then(function(){
+      tombol.disabled = false;
+      gambar();
+      kabar("Profil tersimpan.");
+    }).catch(function(){
+      tombol.disabled = false;
+      tampilGalat("Profil gagal disimpan. Coba lagi.");
+    });
+  });
+}
+
+/* ============================================================
+   Pegawai — formulir pengajuan
+   ============================================================ */
+function isiForm(){
+  var p = S.sesi.profil || {};
+  S.foto = null; S.namaFoto = "";
+  q("#isi").innerHTML =
+  '<div class="sj-panel">' +
+    '<div class="sj-panel-head"><h2>Ajukan kenaikan gaji berkala</h2>' +
+      '<button class="sj-btn sj-btn-teks" id="f-batal">Kembali</button></div>' +
+    (p.pangkat && p.unit
+      ? '<p class="sj-info">Data kepegawaian terisi dari profil Anda. Ubah di sini bila ada yang berbeda.</p>'
+      : '<p class="sj-bantuan">Isi menu Profil sekali saja supaya bagian ini terisi sendiri pada pengajuan berikutnya.</p>') +
+    '<div class="sj-grid2 sj-mt">' +
+      '<label class="sj-field"><span>Pangkat</span><input id="f-pangkat" value="' + esc(p.pangkat||"") + '" placeholder="Penata Muda Tingkat I"></label>' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="f-golongan">' + pilihanGolongan(p.golongan||"III/a") + '</select></label>' +
+      '<label class="sj-field"><span>Jabatan</span><input id="f-jabatan" value="' + esc(p.jabatan||"") + '" placeholder="Guru Ahli Pertama"></label>' +
+      '<label class="sj-field"><span>Unit kerja</span><input id="f-unit" value="' + esc(p.unit||"") + '" placeholder="SMPN 3 Medan"></label>' +
+    '</div>' +
+    '<div class="sj-sub">Masa kerja golongan</div>' +
+    '<div class="sj-grid2">' +
+      '<label class="sj-field"><span>Tahun</span><input id="f-mkt" inputmode="numeric" value="' + esc(p.masaKerjaTahun||"") + '" placeholder="10"></label>' +
+      '<label class="sj-field"><span>Bulan</span><input id="f-mkb" inputmode="numeric" value="' + esc(p.masaKerjaBulan||"") + '" placeholder="4"></label>' +
+    '</div>' +
+    '<div class="sj-sub">Data gaji berkala</div>' +
+    '<div class="sj-grid2">' +
+      '<label class="sj-field"><span>Nomor SK berkala terakhir</span><input id="f-nosk" placeholder="821.2/145/BKD/2024"></label>' +
+      '<label class="sj-field"><span>TMT berkala terakhir</span><input id="f-tmtlama" type="date"></label>' +
+      '<label class="sj-field"><span>TMT berkala berikutnya</span><input id="f-tmtbaru" type="date"></label>' +
+      '<label class="sj-field"><span>Gaji pokok saat ini</span><input id="f-gajilama" inputmode="numeric" placeholder="3.203.600"></label>' +
+      '<label class="sj-field"><span>Gaji pokok usulan</span><input id="f-gajibaru" inputmode="numeric" placeholder="3.305.100"></label>' +
+    '</div>' +
+    '<p class="sj-bantuan" id="f-hitung"></p>' +
+    '<div class="sj-sub">Lampiran</div>' +
+    '<div id="f-unggah"><input type="file" id="f-file" accept="image/*" hidden>' +
+      '<button class="sj-drop" id="f-pilih"><strong>Pilih pindaian SK berkala terakhir</strong>' +
+      '<span>Format JPG atau PNG, satu gambar per pengajuan.</span></button></div>' +
+    '<label class="sj-field"><span>Catatan untuk kepegawaian</span>' +
+      '<textarea id="f-catatan" rows="3" placeholder="Contoh: SK asli sudah diserahkan ke bagian umum pada 2 September."></textarea></label>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="f-kirim">Kirim pengajuan</button>' +
+      '<button class="sj-btn sj-btn-halus" id="f-batal2">Batal</button></div>' +
+  '</div>';
+
+  function keBeranda(){ S.tab = "beranda"; gambarIsi(); }
+  q("#f-batal").addEventListener("click", keBeranda);
+  q("#f-batal2").addEventListener("click", keBeranda);
+
+  q("#f-tmtlama").addEventListener("change", function(){
+    if(!nilai("f-tmtbaru")) q("#f-tmtbaru").value = tambahTahun(this.value, 2);
+    hitungRingkas();
+  });
+  q("#f-tmtbaru").addEventListener("change", hitungRingkas);
+  ["f-gajilama","f-gajibaru"].forEach(function(id){
+    q("#"+id).addEventListener("input", function(){
+      var a = angkaSaja(this.value);
+      this.value = a ? Number(a).toLocaleString("id-ID") : "";
+      hitungRingkas();
+    });
+  });
+
+  function hitungRingkas(){
+    var lama = Number(angkaSaja(nilai("f-gajilama")))||0, baru = Number(angkaSaja(nilai("f-gajibaru")))||0;
+    var tmt = nilai("f-tmtbaru"), teks = [];
+    if(baru > lama) teks.push("Selisih yang diusulkan " + rupiah(baru-lama) + " per bulan.");
+    if(tmt){
+      var s = selisihHari(tmt);
+      teks.push("Terhitung mulai " + tglIndo(tmt) + " — " + (s >= 0 ? s + " hari lagi." : "sudah terlewat " + Math.abs(s) + " hari."));
+    }
+    q("#f-hitung").textContent = teks.join(" ");
+  }
+
+  q("#f-pilih").addEventListener("click", function(){ q("#f-file").click(); });
+  q("#f-file").addEventListener("change", function(){
+    var file = this.files && this.files[0];
+    if(!file) return;
+    tampilGalat("");
+    if(file.type.indexOf("image/") !== 0) return tampilGalat("Unggah pindaian dalam bentuk gambar (JPG atau PNG).");
+    if(file.size > 12*1024*1024) return tampilGalat("Ukuran gambar melebihi 12 MB.");
+    kompresGambar(file).then(function(data){
+      S.foto = data; S.namaFoto = bersihkan(file.name, 80);
+      q("#f-unggah").innerHTML =
+        '<input type="file" id="f-file" accept="image/*" hidden>' +
+        '<div class="sj-pratinjau"><img src="' + data + '" alt="Pratinjau lampiran"><div>' +
+        '<div class="sj-pratinjau-nama">' + esc(S.namaFoto) + '</div>' +
+        '<div class="sj-bantuan">Gambar dikecilkan lalu disandikan sebelum disimpan.</div>' +
+        '<button class="sj-btn sj-btn-teks" id="f-ganti">Ganti gambar</button></div></div>';
+      q("#f-ganti").addEventListener("click", function(){ q("#f-file").click(); });
+      q("#f-file").addEventListener("change", function(){ location.hash = ""; isiFormUlangGambar(this.files); });
+    }).catch(function(err){ tampilGalat(err.message); });
+  });
+
+  function isiFormUlangGambar(files){
+    var file = files && files[0];
+    if(!file) return;
+    kompresGambar(file).then(function(data){
+      S.foto = data; S.namaFoto = bersihkan(file.name, 80);
+      var img = q("#f-unggah img"); if(img) img.src = data;
+      var nm = q(".sj-pratinjau-nama"); if(nm) nm.textContent = S.namaFoto;
+    });
+  }
+
+  q("#f-kirim").addEventListener("click", function(){
+    var tombol = this;
+    tampilGalat("");
+    var f = {
+      pangkat: bersihkan(nilai("f-pangkat")), golongan: nilai("f-golongan"),
+      jabatan: bersihkan(nilai("f-jabatan")), unit: bersihkan(nilai("f-unit")),
+      mkt: angkaSaja(nilai("f-mkt")), mkb: angkaSaja(nilai("f-mkb")),
+      nosk: bersihkan(nilai("f-nosk"), 60), tmtLama: nilai("f-tmtlama"), tmtBaru: nilai("f-tmtbaru"),
+      gajiLama: Number(angkaSaja(nilai("f-gajilama")))||0,
+      gajiBaru: Number(angkaSaja(nilai("f-gajibaru")))||0,
+      catatan: bersihkan(nilai("f-catatan"), 400)
+    };
+    if(!f.pangkat) return tampilGalat("Isi pangkat Anda.");
+    if(!f.unit) return tampilGalat("Isi unit kerja Anda.");
+    if(!f.tmtLama) return tampilGalat("Isi TMT gaji berkala terakhir.");
+    if(!f.tmtBaru) return tampilGalat("Isi TMT gaji berkala berikutnya.");
+    if(new Date(f.tmtBaru) <= new Date(f.tmtLama)) return tampilGalat("TMT berikutnya harus setelah TMT terakhir.");
+    if(!f.gajiLama) return tampilGalat("Isi gaji pokok saat ini.");
+    if(!S.foto) return tampilGalat("Lampirkan pindaian SK gaji berkala terakhir.");
+
+    tombol.disabled = true; tombol.textContent = "Mengirim…";
+    var id = uid();
+    sandikan(S.foto).then(function(t){ return gudang.set(fotoKey(id), t, true); })
+      .then(ambilDaftar)
+      .then(function(daftar){
+        var rekaman = {
+          id: id, nip: S.sesi.nip, nama: S.sesi.nama,
+          pangkat: f.pangkat, golongan: f.golongan, jabatan: f.jabatan, unit: f.unit,
+          masaKerja: (f.mkt||0) + " tahun " + (f.mkb||0) + " bulan",
+          noSk: f.nosk, tmtLama: f.tmtLama, tmtBaru: f.tmtBaru,
+          gajiLama: f.gajiLama, gajiBaru: f.gajiBaru, catatan: f.catatan,
+          namaFoto: S.namaFoto, status: "diajukan", catatanAdmin: "",
+          dibuat: Date.now(), diperbarui: Date.now()
+        };
+        return simpanDaftar([rekaman].concat(daftar)).then(function(){
+          S.daftar = [rekaman].concat(S.daftar);
+          return catat(S.sesi.nama, "Kirim pengajuan", "TMT " + f.tmtBaru);
+        });
+      })
+      .then(function(){
+        S.tab = "beranda";
+        gambarIsi();
+        kabar("Pengajuan terkirim dan sudah masuk ke daftar admin.");
+      })
+      .catch(function(){
+        tombol.disabled = false; tombol.textContent = "Kirim pengajuan";
+        tampilGalat("Pengajuan gagal disimpan. Periksa koneksi lalu kirim ulang.");
+      });
+  });
+}
+
+/* ============================================================
+   Admin — berkas
+   ============================================================ */
+function isiBerkas(){
+  var d = S.daftar;
+  var menunggu = d.filter(function(x){ return x.status === "diajukan"; }).length;
+  var disetujui = d.filter(function(x){ return x.status === "disetujui"; }).length;
+  var jatuhTempo = d.filter(function(x){
+    var s = selisihHari(x.tmtBaru);
+    return s !== null && s <= 90 && x.status !== "disetujui";
+  }).length;
+
+  var cari = S.cari.trim().toLowerCase();
+  var tersaring = d.filter(function(x){
+    var st = S.saring === "semua" || x.status === S.saring;
+    var ok = !cari || x.nama.toLowerCase().indexOf(cari) >= 0 || x.nip.indexOf(cari) >= 0 ||
+      String(x.unit||"").toLowerCase().indexOf(cari) >= 0;
+    return st && ok;
+  });
+
+  var kunci = ["semua","diajukan","perbaikan","disetujui","ditolak"];
+  var html =
+  '<div class="sj-statbar">' +
+    '<div class="sj-stat"><div class="sj-stat-n">' + menunggu + '</div><div class="sj-stat-l">Menunggu diperiksa</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n sj-amber">' + jatuhTempo + '</div><div class="sj-stat-l">Jatuh tempo ≤ 90 hari</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n sj-hijau">' + disetujui + '</div><div class="sj-stat-l">Sudah disetujui</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n">' + d.length + '</div><div class="sj-stat-l">Total berkas masuk</div></div>' +
+  '</div>' +
+  '<div class="sj-toolbar"><div class="sj-chips">' +
+    kunci.map(function(k){
+      return '<button class="sj-chip' + (S.saring === k ? " aktif" : "") + '" data-saring="' + k + '">' +
+        (k === "semua" ? "Semua" : STATUS[k].label) + '</button>';
+    }).join("") +
+  '</div><div class="sj-aksi-kanan">' +
+    '<input class="sj-cari" id="a-cari" value="' + esc(S.cari) + '" placeholder="Cari nama, NIP, atau unit kerja">' +
+    '<button class="sj-btn sj-btn-teks" id="a-segar">Muat ulang</button>' +
+    '<button class="sj-btn sj-btn-halus" id="a-csv"' + (tersaring.length ? "" : " disabled") + '>Unduh CSV</button>' +
+  '</div></div>';
+
+  if(!tersaring.length){
+    html += '<p class="sj-bantuan">Tidak ada berkas yang cocok dengan penyaring ini.</p>';
+  } else {
+    html += '<div class="sj-tabel"><div class="sj-thead sj-row5"><span>Pegawai</span><span>Golongan</span>' +
+      '<span>Berlaku mulai</span><span>Gaji usulan</span><span>Status</span></div>' +
+      tersaring.map(function(x){
+        var s = selisihHari(x.tmtBaru);
+        var sisa = s === null ? "" : (s >= 0 ? s + " hari lagi" : "terlewat " + Math.abs(s) + " hari");
+        return '<button class="sj-trow sj-row5" data-id="' + x.id + '">' +
+          '<span class="sj-td"><strong>' + esc(x.nama) + '</strong><span class="sj-row-meta">' + esc(x.nip) + '</span></span>' +
+          '<span class="sj-td">' + esc(x.golongan) + '<span class="sj-row-meta">' + esc(x.unit) + '</span></span>' +
+          '<span class="sj-td">' + tglSingkat(x.tmtBaru) + '<span class="sj-row-meta' +
+            (s !== null && s <= 90 ? " sj-amber" : "") + '">' + sisa + '</span></span>' +
+          '<span class="sj-td sj-td-num">' + rupiah(x.gajiBaru || x.gajiLama) +
+            '<span class="sj-row-meta">masuk ' + waktuRelatif(x.dibuat) + '</span></span>' +
+          '<span class="sj-td sj-td-status">' + lencana(x.status) + '</span></button>';
+      }).join("") + '</div>';
+  }
+
+  q("#isi").innerHTML = html;
+  pasang(".sj-chip", "click", function(){ S.saring = this.dataset.saring; isiBerkas(); });
+  q("#a-segar").addEventListener("click", function(){ muatData().then(gambarIsi); });
+  var cariEl = q("#a-cari");
+  cariEl.addEventListener("input", function(){
+    S.cari = this.value;
+    var posisi = this.selectionStart;
+    isiBerkas();
+    var baru = q("#a-cari");
+    baru.focus();
+    baru.setSelectionRange(posisi, posisi);
+  });
+  q("#a-csv").addEventListener("click", function(){ unduhCsv(tersaring); });
+  pasang(".sj-trow", "click", function(){ bukaDetail(this.dataset.id, "admin"); }, q("#isi"));
+}
+
+function unduhCsv(baris){
+  var kolom = ["Nama","NIP","Pangkat","Golongan","Unit kerja","TMT lama","TMT berikutnya","Gaji lama","Gaji usulan","Status"];
+  var isi = [kolom].concat(baris.map(function(d){
+    return [d.nama, d.nip, d.pangkat, d.golongan, d.unit, d.tmtLama, d.tmtBaru, d.gajiLama, d.gajiBaru,
+      (STATUS[d.status] || {}).label || d.status];
+  }));
+  var csv = isi.map(function(r){
+    return r.map(function(s){ return '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"'; }).join(",");
+  }).join("\n");
+  var url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "simoji-kgb-" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   Admin — akun
+   ============================================================ */
+function isiAkun(){
+  var pegawai = S.akun.filter(function(a){ return a.peran === "pegawai"; }).length;
+  var admin = S.akun.filter(function(a){ return a.peran === "admin"; }).length;
+
+  var html =
+  '<div class="sj-statbar sj-statbar-2">' +
+    '<div class="sj-stat"><div class="sj-stat-n">' + pegawai + '</div><div class="sj-stat-l">Akun pegawai</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n sj-biru">' + admin + '</div><div class="sj-stat-l">Akun admin</div></div>' +
+  '</div>' +
+  '<div class="sj-panel sj-mt"><div class="sj-panel-head"><h2>Buat akun baru</h2></div>' +
+    '<div class="sj-grid2">' +
+      '<label class="sj-field"><span>Nama lengkap</span><input id="k-nama" placeholder="Andi Pratama, S.E."></label>' +
+      '<label class="sj-field"><span>NIP</span><input id="k-nip" inputmode="numeric" placeholder="199001012015031002"></label>' +
+      '<label class="sj-field"><span>Kata sandi awal</span><span class="sj-gabung">' +
+        '<input id="k-sandi" type="text" placeholder="Huruf dan angka, minimal 8">' +
+        '<button class="sj-btn sj-btn-halus" id="k-acak">Buatkan</button></span></label>' +
+      '<label class="sj-field"><span>Peran</span><select id="k-peran">' +
+        '<option value="admin">Admin kepegawaian</option><option value="pegawai">Pegawai</option></select></label>' +
+    '</div>' +
+    '<p class="sj-bantuan">Pemilik akun diminta mengganti kata sandi ini saat pertama kali masuk.</p>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="k-buat">Buat akun</button></div></div>';
+
+  if(S.hasilReset){
+    html += '<div class="sj-info sj-mt">Kata sandi ' + esc(S.hasilReset.nama) + ' disetel ulang menjadi <code>' +
+      esc(S.hasilReset.sandi) + '</code>. Sampaikan langsung ke yang bersangkutan, catatan ini hilang saat halaman dimuat ulang.</div>';
+  }
+
+  html += '<div class="sj-panel-head sj-mt"><h2>Akun terdaftar</h2></div>';
+  if(!S.akun.length){
+    html += '<p class="sj-bantuan">Belum ada akun.</p>';
+  } else {
+    html += '<div class="sj-tabel"><div class="sj-thead sj-row4"><span>Nama</span><span>Peran</span>' +
+      '<span>Aktivitas</span><span>Tindakan</span></div>' +
+      S.akun.map(function(a){
+        var tindakan = a.id === S.sesi.id
+          ? '<span class="sj-row-meta">akun Anda</span>'
+          : '<button class="sj-btn sj-btn-teks" data-aksi="reset" data-id="' + a.id + '">Setel ulang sandi</button>' +
+            '<button class="sj-btn sj-btn-teks" data-aksi="peran" data-id="' + a.id + '">Jadikan ' +
+              (a.peran === "admin" ? "pegawai" : "admin") + '</button>' +
+            '<button class="sj-btn sj-btn-teks sj-hapus" data-aksi="hapus" data-id="' + a.id + '">Hapus</button>';
+        return '<div class="sj-trow sj-row4 sj-statis">' +
+          '<span class="sj-td"><strong>' + esc(a.nama) + '</strong><span class="sj-row-meta">' + esc(a.nip) + '</span></span>' +
+          '<span class="sj-td"><span class="sj-badge ' + (a.peran === "admin" ? "sj-badge-biru" : "sj-badge-netral") + '">' +
+            (a.peran === "admin" ? "Admin" : "Pegawai") + '</span></span>' +
+          '<span class="sj-td sj-row-meta">dibuat ' + jamTanggal(a.dibuat) +
+            '<span>masuk terakhir ' + waktuRelatif(a.terakhirMasuk) + '</span></span>' +
+          '<span class="sj-td sj-td-aksi">' + tindakan + '</span></div>';
+      }).join("") + '</div>';
+  }
+
+  q("#isi").innerHTML = html;
+  q("#k-acak").addEventListener("click", function(){ q("#k-sandi").value = sandiAcak(); });
+  q("#k-buat").addEventListener("click", buatAkun);
+  pasang("[data-aksi]", "click", function(){
+    var id = this.dataset.id, aksi = this.dataset.aksi;
+    if(aksi === "reset") return resetSandi(id);
+    if(aksi === "peran") return ubahPeran(id);
+    if(aksi === "hapus") return hapusAkun(id);
+  }, q("#isi"));
+}
+
+function buatAkun(){
+  var tombol = q("#k-buat");
+  tampilGalat("");
+  var nama = bersihkan(nilai("k-nama")), nip = angkaSaja(nilai("k-nip"));
+  var sandi = nilai("k-sandi"), peran = nilai("k-peran");
+  if(nama.length < 3) return tampilGalat("Tulis nama lengkap pemilik akun.");
+  if(nip.length < 8) return tampilGalat("NIP minimal 8 angka.");
+  var pesan = periksaSandi(sandi);
+  if(pesan) return tampilGalat(pesan);
+
+  tombol.disabled = true;
+  ambilAkun().then(function(semua){
+    for(var i=0;i<semua.length;i++) if(semua[i].nip === nip){
+      tampilGalat("NIP ini sudah punya akun.");
+      throw "berhenti";
+    }
+    var garam = garamBaru();
+    return turunkanSandi(sandi, garam).then(function(hash){
+      var baru = {
+        id: uid(), nip: nip, nama: nama, peran: peran, garam: garam, iterasi: ITERASI, hash: hash,
+        profil: {}, wajibGanti: true, dibuat: Date.now(), terakhirMasuk: 0
+      };
+      var semuaBaru = [baru].concat(semua);
+      return simpanAkun(semuaBaru).then(function(){
+        S.akun = semuaBaru.slice().sort(function(x,y){ return (y.dibuat||0)-(x.dibuat||0); });
+        return catat(S.sesi.nama, "Buat akun", nama + " sebagai " + peran);
+      });
+    });
+  }).then(function(){
+    S.hasilReset = null;
+    isiAkun();
+    kabar("Akun " + peran + " untuk " + nama + " dibuat.");
+  }).catch(function(e){
+    tombol.disabled = false;
+    if(e !== "berhenti") tampilGalat("Akun gagal disimpan. Coba lagi.");
+  });
+}
+
+function resetSandi(id){
+  var sandi = sandiAcak();
+  ambilAkun().then(function(semua){
+    var sasaran = semua.filter(function(a){ return a.id === id; })[0];
+    if(!sasaran) throw "hilang";
+    var garam = garamBaru();
+    return turunkanSandi(sandi, garam).then(function(hash){
+      var baru = semua.map(function(a){
+        return a.id === id ? Object.assign({}, a, { garam: garam, iterasi: ITERASI, hash: hash, wajibGanti: true }) : a;
+      });
+      return simpanAkun(baru).then(function(){
+        S.akun = baru.slice().sort(function(x,y){ return (y.dibuat||0)-(x.dibuat||0); });
+        S.hasilReset = { nama: sasaran.nama, sandi: sandi };
+        return catat(S.sesi.nama, "Setel ulang sandi", sasaran.nama);
+      });
+    });
+  }).then(isiAkun).catch(function(){ kabar("Kata sandi gagal disetel ulang."); });
+}
+
+function ubahPeran(id){
+  ambilAkun().then(function(semua){
+    var sasaran = semua.filter(function(a){ return a.id === id; })[0];
+    if(!sasaran) return;
+    var peran = sasaran.peran === "admin" ? "pegawai" : "admin";
+    var baru = semua.map(function(a){ return a.id === id ? Object.assign({}, a, { peran: peran }) : a; });
+    return simpanAkun(baru).then(function(){
+      S.akun = baru.slice().sort(function(x,y){ return (y.dibuat||0)-(x.dibuat||0); });
+      return catat(S.sesi.nama, "Ubah peran", sasaran.nama + " menjadi " + peran);
+    }).then(function(){
+      isiAkun();
+      kabar("Peran akun diubah menjadi " + peran + ".");
+    });
+  }).catch(function(){ kabar("Peran gagal diubah. Coba lagi."); });
+}
+
+function hapusAkun(id){
+  if(!confirm("Hapus akun ini? Berkas yang pernah dikirim tetap tersimpan.")) return;
+  ambilAkun().then(function(semua){
+    var sasaran = semua.filter(function(a){ return a.id === id; })[0];
+    var baru = semua.filter(function(a){ return a.id !== id; });
+    return simpanAkun(baru).then(function(){
+      S.akun = baru.slice().sort(function(x,y){ return (y.dibuat||0)-(x.dibuat||0); });
+      return catat(S.sesi.nama, "Hapus akun", sasaran ? sasaran.nama : "");
+    });
+  }).then(function(){
+    isiAkun();
+    kabar("Akun dihapus.");
+  }).catch(function(){ kabar("Akun gagal dihapus. Coba lagi."); });
+}
+
+/* ============================================================
+   Admin — log
+   ============================================================ */
+function isiLog(){
+  var html = '<div class="sj-panel-head"><h2>Log aktivitas</h2>' +
+    '<button class="sj-btn sj-btn-teks" id="l-segar">Muat ulang</button></div>' +
+    '<p class="sj-bantuan">Catatan 300 kejadian terakhir: siapa masuk, siapa mengubah status berkas, dan siapa menyentuh akun.</p>';
+  if(!S.log.length){
+    html += '<p class="sj-bantuan">Belum ada aktivitas yang tercatat.</p>';
+  } else {
+    html += '<div class="sj-tabel sj-mt"><div class="sj-thead sj-row3"><span>Waktu</span><span>Pelaku</span><span>Kegiatan</span></div>' +
+      S.log.map(function(l){
+        return '<div class="sj-trow sj-row3 sj-statis">' +
+          '<span class="sj-td sj-row-meta">' + jamTanggal(l.ts) + '</span>' +
+          '<span class="sj-td">' + esc(l.aktor) + '</span>' +
+          '<span class="sj-td">' + esc(l.aksi) + '<span class="sj-row-meta">' + esc(l.rincian) + '</span></span></div>';
+      }).join("") + '</div>';
+  }
+  q("#isi").innerHTML = html;
+  q("#l-segar").addEventListener("click", function(){ muatData().then(gambarIsi); });
+}
+
+/* ============================================================
+   Laci detail pengajuan
+   ============================================================ */
+function bukaDetail(id, peran){
+  var d = S.daftar.filter(function(x){ return x.id === id; })[0];
+  if(!d) return;
+  var selisih = (d.gajiBaru||0) - (d.gajiLama||0);
+
+  var isi =
+    '<div class="sj-laci-head"><div><h2>' + esc(d.nama) + '</h2>' +
+      '<p class="sj-row-meta">' + esc(d.nip) + ' · dikirim ' + waktuRelatif(d.dibuat) + '</p></div>' +
+      '<button class="sj-btn sj-btn-teks" data-tutup="1">Tutup</button></div>' +
+    '<div class="sj-laci-status">' + lencana(d.status) + '</div>' +
+    '<div class="sj-lampiran" id="d-lampiran"><div class="sj-lampiran-kosong">Membuka lampiran…</div>' +
+      (d.namaFoto ? '<div class="sj-bantuan">' + esc(d.namaFoto) + '</div>' : "") + '</div>' +
+    baris("Pangkat / golongan", esc(d.pangkat) + " · " + esc(d.golongan)) +
+    baris("Jabatan", esc(d.jabatan) || "—") +
+    baris("Unit kerja", esc(d.unit)) +
+    baris("Masa kerja golongan", esc(d.masaKerja)) +
+    baris("Nomor SK terakhir", esc(d.noSk) || "—") +
+    baris("TMT berkala terakhir", tglIndo(d.tmtLama)) +
+    baris("TMT berkala berikutnya", tglIndo(d.tmtBaru)) +
+    baris("Gaji pokok saat ini", rupiah(d.gajiLama)) +
+    baris("Gaji pokok usulan", rupiah(d.gajiBaru) + (selisih > 0 ? ' <span class="sj-hijau">(+' + rupiah(selisih) + ')</span>' : "")) +
+    (d.catatan ? baris("Catatan pegawai", esc(d.catatan)) : "") +
+    (d.catatanAdmin && peran === "pegawai" ? baris("Catatan kepegawaian", esc(d.catatanAdmin)) : "");
+
+  if(peran === "admin"){
+    isi += '<div class="sj-verifikasi"><label class="sj-field"><span>Catatan untuk pegawai</span>' +
+      '<textarea id="d-catatan" rows="2" placeholder="Contoh: lampirkan juga SK pangkat terakhir.">' +
+      esc(d.catatanAdmin||"") + '</textarea></label>' +
+      '<div class="sj-aksi">' +
+        '<button class="sj-btn sj-btn-setuju" data-status="disetujui">Setujui</button>' +
+        '<button class="sj-btn sj-btn-halus" data-status="perbaikan">Minta perbaikan</button>' +
+        '<button class="sj-btn sj-btn-tolak" data-status="ditolak">Tolak</button></div>' +
+      '<button class="sj-btn sj-btn-teks sj-hapus" id="d-hapus">Hapus berkas ini</button></div>';
+  }
+
+  lapis.innerHTML = '<div class="sj-tirai" id="tirai"><div class="sj-laci" id="laci">' + isi + '</div></div>';
+  q("#laci").addEventListener("click", function(e){ e.stopPropagation(); });
+  q("#tirai").addEventListener("click", tutupLapis);
+  pasang("[data-tutup]", "click", tutupLapis, lapis);
+  document.addEventListener("keydown", escTutup);
+
+  gudang.get(fotoKey(d.id), true).then(function(v){
+    if(!v) throw "kosong";
+    return bukaSandi(v);
+  }).then(function(data){
+    var wadah = q("#d-lampiran");
+    if(!wadah) return;
+    wadah.innerHTML = '<button class="sj-lampiran-img" id="d-zoom"><img src="' + data + '" alt="Lampiran SK"></button>' +
+      (d.namaFoto ? '<div class="sj-bantuan">' + esc(d.namaFoto) + '</div>' : "");
+    q("#d-zoom").addEventListener("click", function(){
+      var z = document.createElement("div");
+      z.className = "sj-zoom";
+      z.innerHTML = '<img src="' + data + '" alt="Lampiran SK diperbesar">';
+      z.addEventListener("click", function(){ z.remove(); });
+      document.body.appendChild(z);
+    });
+  }).catch(function(){
+    var wadah = q("#d-lampiran");
+    if(wadah) wadah.innerHTML = '<div class="sj-lampiran-kosong">Lampiran tidak ditemukan pada berkas ini.</div>';
+  });
+
+  if(peran === "admin"){
+    pasang("[data-status]", "click", function(){
+      ubahStatus(d.id, this.dataset.status, bersihkan(q("#d-catatan").value, 300));
+    }, lapis);
+    q("#d-hapus").addEventListener("click", function(){ hapusBerkas(d.id); });
+  }
+}
+
+function escTutup(e){ if(e.key === "Escape") tutupLapis(); }
+function tutupLapis(){
+  lapis.innerHTML = "";
+  document.removeEventListener("keydown", escTutup);
+}
+
+function ubahStatus(id, status, catatanAdmin){
+  ambilDaftar().then(function(server){
+    var sasaran = server.filter(function(x){ return x.id === id; })[0];
+    var baru = server.map(function(x){
+      return x.id === id ? Object.assign({}, x, { status: status, catatanAdmin: catatanAdmin, diperbarui: Date.now() }) : x;
+    });
+    return simpanDaftar(baru).then(function(){
+      S.daftar = baru.slice().sort(function(a,b){ return (b.dibuat||0)-(a.dibuat||0); });
+      return catat(S.sesi.nama, "Ubah status berkas", (sasaran ? sasaran.nama : "") + " → " + STATUS[status].label);
+    });
+  }).then(function(){
+    tutupLapis();
+    gambarIsi();
+    kabar("Berkas ditandai " + STATUS[status].label.toLowerCase() + ".");
+  }).catch(function(){ kabar("Perubahan gagal disimpan. Coba lagi."); });
+}
+
+function hapusBerkas(id){
+  if(!confirm("Hapus berkas ini beserta lampirannya?")) return;
+  ambilDaftar().then(function(server){
+    var sasaran = server.filter(function(x){ return x.id === id; })[0];
+    return simpanDaftar(server.filter(function(x){ return x.id !== id; })).then(function(){
+      return gudang.del(fotoKey(id), true);
+    }).then(function(){
+      S.daftar = S.daftar.filter(function(x){ return x.id !== id; });
+      return catat(S.sesi.nama, "Hapus berkas", sasaran ? sasaran.nama : "");
+    });
+  }).then(function(){
+    tutupLapis();
+    gambarIsi();
+    kabar("Berkas dihapus.");
+  }).catch(function(){ kabar("Berkas gagal dihapus. Coba lagi."); });
+}
+
+/* ============================================================
+   Ubah kata sandi
+   ============================================================ */
+function bukaUbahSandi(wajib){
+  lapis.innerHTML =
+  '<div class="sj-tirai" id="tirai"><div class="sj-laci sj-laci-kecil" id="laci">' +
+    '<div class="sj-laci-head"><div><h2>Ubah kata sandi</h2>' +
+      '<p class="sj-row-meta">' + esc(S.sesi.nama) + ' · ' + esc(S.sesi.nip) + '</p></div>' +
+      (wajib ? "" : '<button class="sj-btn sj-btn-teks" data-tutup="1">Tutup</button>') + '</div>' +
+    (wajib ? '<p class="sj-info sj-mt">Akun ini dibuatkan oleh admin. Ganti kata sandinya dulu sebelum melanjutkan.</p>' : "") +
+    '<div class="sj-mt">' +
+      '<label class="sj-field"><span>Kata sandi sekarang</span><input id="s-lama" type="password"></label>' +
+      '<label class="sj-field"><span>Kata sandi baru</span><input id="s-baru" type="password">' +
+        '<span class="sj-kekuatan" id="s-kekuatan">' + barKekuatan("") + '</span></label>' +
+      '<label class="sj-field"><span>Ulangi kata sandi baru</span><input id="s-ulangi" type="password"></label>' +
+    '</div>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="s-simpan">Simpan kata sandi</button>' +
+      (wajib ? "" : '<button class="sj-btn sj-btn-halus" data-tutup="1">Batal</button>') + '</div>' +
+  '</div></div>';
+
+  q("#laci").addEventListener("click", function(e){ e.stopPropagation(); });
+  if(!wajib){
+    q("#tirai").addEventListener("click", tutupLapis);
+    pasang("[data-tutup]", "click", tutupLapis, lapis);
+    document.addEventListener("keydown", escTutup);
+  }
+  q("#s-baru").addEventListener("input", function(){ q("#s-kekuatan").innerHTML = barKekuatan(this.value); });
+
+  q("#s-simpan").addEventListener("click", function(){
+    var tombol = this;
+    tampilGalat("");
+    var lama = nilai("s-lama"), baru = nilai("s-baru"), ulangi = nilai("s-ulangi");
+    var pesan = periksaSandi(baru);
+    if(pesan) return tampilGalat(pesan);
+    if(baru !== ulangi) return tampilGalat("Ulangan kata sandi belum sama.");
+    if(baru === lama) return tampilGalat("Kata sandi baru harus berbeda dari yang lama.");
+
+    tombol.disabled = true;
+    ambilAkun().then(function(semua){
+      var saya = semua.filter(function(a){ return a.id === S.sesi.id; })[0];
+      if(!saya){ tampilGalat("Akun Anda tidak ditemukan lagi."); throw "berhenti"; }
+      return turunkanSandi(lama, saya.garam, saya.iterasi).then(function(cek){
+        if(!samaAman(cek, saya.hash)){ tampilGalat("Kata sandi sekarang salah."); throw "berhenti"; }
+        var garam = garamBaru();
+        return turunkanSandi(baru, garam).then(function(hash){
+          var akunBaru = semua.map(function(a){
+            return a.id === S.sesi.id
+              ? Object.assign({}, a, { garam: garam, iterasi: ITERASI, hash: hash, wajibGanti: false })
+              : a;
+          });
+          return simpanAkun(akunBaru).then(function(){
+            S.sesi.wajibGanti = false;
+            return catat(S.sesi.nama, "Ganti kata sandi", "");
+          });
+        });
+      });
+    }).then(function(){
+      lapis.innerHTML = "";
+      document.removeEventListener("keydown", escTutup);
+      kabar("Kata sandi diganti.");
+    }).catch(function(e){
+      tombol.disabled = false;
+      if(e !== "berhenti") tampilGalat("Kata sandi gagal diganti. Coba lagi.");
+    });
+  });
+}
+
+/* ============================================================
+   Mulai
+   ============================================================ */
+function mulai(){
+  gudang.get(KEY_SESI, false).then(function(v){
+    if(!v) return null;
+    var s = JSON.parse(v);
+    if(s.kedaluwarsa <= Date.now()) return gudang.del(KEY_SESI, false).then(function(){ return null; });
+    return ambilAkun().then(function(semua){
+      return semua.filter(function(a){ return a.id === s.id; })[0] || null;
+    });
+  }).catch(function(){ return null; })
+  .then(function(akun){
+    if(akun){
+      S.sesi = akun;
+      return muatData().then(function(){
+        gambar();
+        if(akun.wajibGanti) bukaUbahSandi(true);
+      });
+    }
+    return ambilAkun().then(function(a){
+      S.adaAdmin = a.some(function(x){ return x.peran === "admin"; });
+      gambarMasuk();
+    });
+  });
+
+  setInterval(function(){
+    if(S.sesi && S.sesi.peran === "admin" && !lapis.innerHTML){
+      muatData().then(gambarIsi);
+    }
+  }, 20000);
+}
+mulai();
+</script>
+</body>
+</html>
