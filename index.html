@@ -151,6 +151,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-pratinjau{display:flex;gap:16px;align-items:flex-start;}
 .sj-pratinjau img{width:150px;height:110px;object-fit:cover;border:1px solid var(--garis);}
 .sj-pratinjau-nama{font-family:'Archivo Narrow',sans-serif;font-weight:600;}
+.sj-slots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.sj-slot{border:1px solid var(--garis-tipis);padding:10px;background:#fff;}
+.sj-slot .sj-drop{padding:14px;}
+.sj-slot .sj-pratinjau img{width:110px;height:82px;}
+.sj-lampiran-satu{margin-bottom:14px;}
+.sj-lampiran-satu .sj-kv-l{margin-bottom:4px;}
+.sj-rust{color:var(--rust);}
+@media (max-width:900px){ .sj-slots{grid-template-columns:1fr;} }
 
 .sj-btn{font:inherit;border-radius:2px;cursor:pointer;padding:10px 18px;border:1px solid transparent;}
 .sj-btn:disabled{opacity:.5;cursor:not-allowed;}
@@ -365,6 +373,31 @@ var STATUS = {
   ditolak:{label:"Ditolak",warna:"rust"}
 };
 var GOLONGAN = ["I/a","I/b","I/c","I/d","II/a","II/b","II/c","II/d","III/a","III/b","III/c","III/d","IV/a","IV/b","IV/c","IV/d","IV/e"];
+var AMBANG_INGAT = 90;   // hari sebelum jatuh tempo mulai diingatkan
+
+/* Cari gaji pokok dari tabel yang dimuat dari Supabase.
+   Mengembalikan null bila golongan itu belum ada isinya. */
+function cariGaji(golongan, mkgTahun){
+  var cocok = null;
+  for(var i=0;i<S.gaji.length;i++){
+    var b = S.gaji[i];
+    if(b.golongan === golongan && b.mkg_min <= mkgTahun){
+      if(!cocok || b.mkg_min > cocok.mkg_min) cocok = b;
+    }
+  }
+  return cocok ? cocok.gaji : null;
+}
+
+/* Masa kerja golongan pada tanggal tertentu, dihitung dari
+   masa kerja saat SK terakhir ditetapkan. */
+function mkgPada(mkgTahun, mkgBulan, tmtLama, tmtTarget){
+  if(!tmtLama || !tmtTarget) return Number(mkgTahun)||0;
+  var a = new Date(tmtLama + "T00:00:00"), b = new Date(tmtTarget + "T00:00:00");
+  if(isNaN(a) || isNaN(b)) return Number(mkgTahun)||0;
+  var bulan = (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth());
+  var total = (Number(mkgTahun)||0)*12 + (Number(mkgBulan)||0) + bulan;
+  return Math.floor(total/12);
+}
 
 function dariBaris(r){
   return {
@@ -374,6 +407,10 @@ function dariBaris(r){
     gajiLama:r.gaji_lama, gajiBaru:r.gaji_baru,
     catatan:r.catatan, catatanAdmin:r.catatan_admin, status:r.status,
     fotoPath:r.foto_path, namaFoto:r.nama_foto,
+    skPangkatPath:r.sk_pangkat_path, namaSkPangkat:r.nama_sk_pangkat,
+    skp1Path:r.skp1_path, namaSkp1:r.nama_skp1, skp1Tahun:r.skp1_tahun,
+    skp2Path:r.skp2_path, namaSkp2:r.nama_skp2, skp2Tahun:r.skp2_tahun,
+    noNota:r.no_nota, mkgTahun:r.mkg_tahun, mkgBulan:r.mkg_bulan,
     dibuat:new Date(r.dibuat).getTime(), diperbarui:new Date(r.diperbarui).getTime()
   };
 }
@@ -400,7 +437,8 @@ function catat(aksi, rincian){
 var S = {
   sesi:null, daftar:[], akun:[], log:[],
   tab:"beranda", mode:"masuk", peranPilih:"pegawai", adaAdmin:null,
-  saring:"semua", cari:"", foto:null, fotoBlob:null, namaFoto:""
+  saring:"semua", cari:"", gaji:[], instansi:{},
+  berkas:{}   // lampiran yang sedang disiapkan di formulir
 };
 var app = document.getElementById("app");
 var lapis = document.getElementById("lapis");
@@ -602,6 +640,16 @@ function muatProfil(){
   });
 }
 
+function muatPendukung(){
+  return Promise.all([
+    sb.from("gaji_pokok").select("*"),
+    sb.from("instansi").select("*").eq("id",1).maybeSingle()
+  ]).then(function(h){
+    S.gaji = h[0].data || [];
+    S.instansi = (h[1] && h[1].data) || {};
+  }).catch(function(){});
+}
+
 function muatData(){
   var kerja = [ sb.from("pengajuan").select("*").order("dibuat", { ascending:false }) ];
   if(S.sesi.peran === "admin"){
@@ -620,7 +668,7 @@ function muatData(){
 }
 
 function mulaiPanel(){
-  return muatData().then(function(){
+  return muatPendukung().then(muatData).then(function(){
     gambar();
     if(S.sesi.wajibGanti) bukaUbahSandi(true);
   });
@@ -648,7 +696,8 @@ function periksaAdmin(){
 function gambar(){
   if(!S.sesi) return gambarMasuk();
   var menu = S.sesi.peran === "admin"
-    ? [["beranda","Berkas pengajuan"],["akun","Akun pengguna"],["log","Log aktivitas"]]
+    ? [["beranda","Berkas pengajuan"],["ingat","Pengingat"],["akun","Akun pengguna"],
+       ["gaji","Tabel gaji"],["log","Log aktivitas"]]
     : [["beranda","Beranda"],["ajukan","Pengajuan baru"],["profil","Profil"]];
 
   app.innerHTML =
@@ -679,6 +728,8 @@ function gambarIsi(){
   if(S.sesi.peran === "admin"){
     if(S.tab === "akun") return isiAkun();
     if(S.tab === "log")  return isiLog();
+    if(S.tab === "ingat") return isiPengingat();
+    if(S.tab === "gaji") return isiGaji();
     return isiBerkas();
   }
   if(S.tab === "ajukan") return isiForm();
@@ -784,7 +835,20 @@ function isiProfil(){
    ============================================================ */
 function isiForm(){
   var p = S.sesi.profil;
-  S.foto = null; S.fotoBlob = null; S.namaFoto = "";
+  S.berkas = {};
+  var thn = new Date().getFullYear();
+  var SLOT = [
+    { k:"sk",      judul:"SK gaji berkala terakhir",  wajib:true },
+    { k:"pangkat", judul:"SK kenaikan pangkat terakhir", wajib:true },
+    { k:"skp1",    judul:"SKP tahun " + (thn-1),      wajib:true },
+    { k:"skp2",    judul:"SKP tahun " + (thn-2),      wajib:true }
+  ];
+  function kotakUnggah(s){
+    return '<div class="sj-slot" id="slot-' + s.k + '">' +
+      '<input type="file" id="file-' + s.k + '" accept="image/*" hidden>' +
+      '<button class="sj-drop" data-pilih="' + s.k + '"><strong>' + esc(s.judul) + '</strong>' +
+      '<span>Ketuk untuk memilih pindaian, format JPG atau PNG.</span></button></div>';
+  }
   q("#isi").innerHTML =
   '<div class="sj-panel"><div class="sj-panel-head"><h2>Ajukan kenaikan gaji berkala</h2>' +
     '<button class="sj-btn sj-btn-teks" id="f-batal">Kembali</button></div>' +
@@ -809,10 +873,10 @@ function isiForm(){
       '<label class="sj-field"><span>Gaji pokok usulan</span><input id="f-gajibaru" inputmode="numeric" placeholder="3.305.100"></label>' +
     '</div>' +
     '<p class="sj-bantuan" id="f-hitung"></p>' +
-    '<div class="sj-sub">Lampiran</div>' +
-    '<div id="f-unggah"><input type="file" id="f-file" accept="image/*" hidden>' +
-      '<button class="sj-drop" id="f-pilih"><strong>Pilih pindaian SK berkala terakhir</strong>' +
-      '<span>Format JPG atau PNG, satu gambar per pengajuan.</span></button></div>' +
+    '<div id="f-otomatis"></div>' +
+    '<div class="sj-sub">Lampiran wajib</div>' +
+    '<p class="sj-bantuan">Empat berkas berikut harus dilampirkan seluruhnya. Foto dari kamera HP boleh, asalkan tulisannya terbaca.</p>' +
+    '<div class="sj-slots">' + SLOT.map(kotakUnggah).join("") + '</div>' +
     '<label class="sj-field"><span>Catatan untuk kepegawaian</span>' +
       '<textarea id="f-catatan" rows="3" placeholder="Contoh: SK asli sudah diserahkan ke bagian umum pada 2 September."></textarea></label>' +
     '<div id="galat" class="sembunyi"></div>' +
@@ -825,7 +889,7 @@ function isiForm(){
 
   q("#f-tmtlama").addEventListener("change", function(){
     if(!nilai("f-tmtbaru")) q("#f-tmtbaru").value = tambahTahun(this.value, 2);
-    hitung();
+    hitung(); isiOtomatis();
   });
   q("#f-tmtbaru").addEventListener("change", hitung);
   ["f-gajilama","f-gajibaru"].forEach(function(id){
@@ -846,27 +910,57 @@ function isiForm(){
     q("#f-hitung").textContent = teks.join(" ");
   }
 
-  q("#f-pilih").addEventListener("click", function(){ q("#f-file").click(); });
-  q("#f-file").addEventListener("change", function(){ terimaGambar(this.files); });
+  function pasangSlot(){
+    pasang("[data-pilih]", "click", function(){ q("#file-" + this.dataset.pilih).click(); }, q("#isi"));
+    SLOT.forEach(function(s){
+      var inp = q("#file-" + s.k);
+      if(inp) inp.addEventListener("change", function(){ terimaGambar(s, this.files); });
+    });
+  }
+  pasangSlot();
 
-  function terimaGambar(files){
+  function terimaGambar(s, files){
     var file = files && files[0];
     if(!file) return;
     tampilGalat("");
-    if(file.type.indexOf("image/") !== 0) return tampilGalat("Unggah pindaian dalam bentuk gambar (JPG atau PNG).");
+    if(file.type.indexOf("image/") !== 0) return tampilGalat("Lampiran harus berupa gambar (JPG atau PNG).");
     if(file.size > 12*1024*1024) return tampilGalat("Ukuran gambar melebihi 12 MB.");
     kompresGambar(file).then(function(hasil){
-      S.foto = hasil.url; S.fotoBlob = hasil.blob; S.namaFoto = bersihkan(file.name, 80);
-      q("#f-unggah").innerHTML =
-        '<input type="file" id="f-file" accept="image/*" hidden>' +
-        '<div class="sj-pratinjau"><img src="' + S.foto + '" alt="Pratinjau lampiran"><div>' +
-        '<div class="sj-pratinjau-nama">' + esc(S.namaFoto) + '</div>' +
-        '<div class="sj-bantuan">Gambar dikecilkan sebelum diunggah ke penyimpanan.</div>' +
-        '<button class="sj-btn sj-btn-teks" id="f-ganti">Ganti gambar</button></div></div>';
-      q("#f-ganti").addEventListener("click", function(){ q("#f-file").click(); });
-      q("#f-file").addEventListener("change", function(){ terimaGambar(this.files); });
+      S.berkas[s.k] = { blob: hasil.blob, nama: bersihkan(file.name, 80) };
+      q("#slot-" + s.k).innerHTML =
+        '<input type="file" id="file-' + s.k + '" accept="image/*" hidden>' +
+        '<div class="sj-pratinjau"><img src="' + hasil.url + '" alt="Pratinjau ' + esc(s.judul) + '"><div>' +
+        '<div class="sj-pratinjau-nama">' + esc(s.judul) + '</div>' +
+        '<div class="sj-row-meta">' + esc(S.berkas[s.k].nama) + '</div>' +
+        '<button class="sj-btn sj-btn-teks" data-pilih="' + s.k + '">Ganti gambar</button></div></div>';
+      pasangSlot();
     }).catch(function(err){ tampilGalat(err.message); });
   }
+
+  /* usulan gaji terisi sendiri dari tabel PP */
+  function isiOtomatis(){
+    var gol = nilai("f-golongan"), tmtLama = nilai("f-tmtlama"), tmtBaru = nilai("f-tmtbaru");
+    var mkgSekarang = mkgPada(nilai("f-mkt"), nilai("f-mkb"), tmtLama, tmtLama);
+    var mkgNanti = mkgPada(nilai("f-mkt"), nilai("f-mkb"), tmtLama, tmtBaru);
+    var lama = cariGaji(gol, mkgSekarang), baru = cariGaji(gol, mkgNanti);
+    var ket = q("#f-otomatis");
+    if(!ket) return;
+    if(lama === null && baru === null){
+      ket.innerHTML = '<span class="sj-row-meta">Tabel gaji untuk golongan ' + esc(gol) +
+        ' belum diisi, jadi kolom gaji diisi manual.</span>';
+      return;
+    }
+    if(lama !== null && !nilai("f-gajilama")) q("#f-gajilama").value = Number(lama).toLocaleString("id-ID");
+    if(baru !== null && !nilai("f-gajibaru")) q("#f-gajibaru").value = Number(baru).toLocaleString("id-ID");
+    ket.innerHTML = '<span class="sj-info">Menurut PP 5/2024, golongan ' + esc(gol) +
+      ' dengan masa kerja ' + mkgNanti + ' tahun bergaji pokok ' + rupiah(baru) +
+      '. Angkanya boleh Anda ubah bila berbeda dengan SK.</span>';
+    hitung();
+  }
+  ["f-golongan","f-mkt","f-mkb"].forEach(function(id){
+    q("#"+id).addEventListener("change", isiOtomatis);
+  });
+  q("#f-tmtbaru").addEventListener("change", isiOtomatis);
 
   q("#f-kirim").addEventListener("click", function(){
     var tombol = this;
@@ -886,20 +980,34 @@ function isiForm(){
     if(!f.tmtBaru) return tampilGalat("Isi TMT gaji berkala berikutnya.");
     if(new Date(f.tmtBaru) <= new Date(f.tmtLama)) return tampilGalat("TMT berikutnya harus setelah TMT terakhir.");
     if(!f.gajiLama) return tampilGalat("Isi gaji pokok saat ini.");
-    if(!S.fotoBlob) return tampilGalat("Lampirkan pindaian SK gaji berkala terakhir.");
+    var kurang = SLOT.filter(function(s){ return s.wajib && !S.berkas[s.k]; });
+    if(kurang.length) return tampilGalat("Lampiran belum lengkap: " +
+      kurang.map(function(s){ return s.judul; }).join(", ") + ".");
 
     tombol.disabled = true; tombol.textContent = "Mengirim…";
-    var jalur = S.sesi.id + "/" + Date.now() + ".jpg";
-    sb.storage.from(BUCKET).upload(jalur, S.fotoBlob, { contentType:"image/jpeg", upsert:false })
-      .then(function(r){
-        if(r.error) throw r.error;
+    var dasar = S.sesi.id + "/" + Date.now() + "-";
+    var jalur = {};
+    var unggah = SLOT.map(function(s){
+      var nama = dasar + s.k + ".jpg";
+      jalur[s.k] = nama;
+      return sb.storage.from(BUCKET).upload(nama, S.berkas[s.k].blob, { contentType:"image/jpeg", upsert:false });
+    });
+    var thnIni = new Date().getFullYear();
+    Promise.all(unggah)
+      .then(function(hasil){
+        for(var i=0;i<hasil.length;i++) if(hasil[i].error) throw hasil[i].error;
         return sb.from("pengajuan").insert({
           pegawai_id: S.sesi.id, nip: S.sesi.nip, nama: S.sesi.nama,
           pangkat: f.pangkat, golongan: f.golongan, jabatan: f.jabatan, unit: f.unit,
           masa_kerja: (f.mkt||0) + " tahun " + (f.mkb||0) + " bulan",
+          mkg_tahun: Number(f.mkt)||0, mkg_bulan: Number(f.mkb)||0,
           no_sk: f.nosk, tmt_lama: f.tmtLama, tmt_baru: f.tmtBaru,
           gaji_lama: f.gajiLama, gaji_baru: f.gajiBaru,
-          catatan: f.catatan, foto_path: jalur, nama_foto: S.namaFoto, status: "diajukan"
+          catatan: f.catatan, status: "diajukan",
+          foto_path: jalur.sk,          nama_foto: S.berkas.sk.nama,
+          sk_pangkat_path: jalur.pangkat, nama_sk_pangkat: S.berkas.pangkat.nama,
+          skp1_path: jalur.skp1, nama_skp1: S.berkas.skp1.nama, skp1_tahun: thnIni-1,
+          skp2_path: jalur.skp2, nama_skp2: S.berkas.skp2.nama, skp2_tahun: thnIni-2
         });
       })
       .then(function(r){
@@ -1041,7 +1149,8 @@ function isiAkun(){
       S.akun.map(function(a){
         var tindakan = a.id === S.sesi.id
           ? '<span class="sj-row-meta">akun Anda</span>'
-          : '<button class="sj-btn sj-btn-teks" data-aksi="peran" data-id="' + a.id + '">Jadikan ' +
+          : '<button class="sj-btn sj-btn-teks" data-aksi="reset" data-id="' + a.id + '">Setel ulang sandi</button>' +
+            '<button class="sj-btn sj-btn-teks" data-aksi="peran" data-id="' + a.id + '">Jadikan ' +
               (a.peran === "admin" ? "pegawai" : "admin") + '</button>' +
             '<button class="sj-btn sj-btn-teks sj-hapus" data-aksi="hapus" data-id="' + a.id + '">Nonaktifkan</button>';
         return '<div class="sj-trow sj-row4 sj-statis">' +
@@ -1059,8 +1168,43 @@ function isiAkun(){
   pasang("[data-aksi]", "click", function(){
     var id = this.dataset.id;
     if(this.dataset.aksi === "peran") return ubahPeran(id);
+    if(this.dataset.aksi === "reset") return resetSandi(id, this);
     return nonaktifkanAkun(id);
   }, q("#isi"));
+}
+
+/* Setel ulang sandi orang lain hanya bisa dilakukan di server,
+   lewat Edge Function yang memegang kunci rahasia. */
+function resetSandi(id, tombol){
+  var sasaran = S.akun.filter(function(a){ return a.id === id; })[0];
+  if(!sasaran) return;
+  if(!confirm("Setel ulang kata sandi " + sasaran.nama + "? Sandi lamanya langsung tidak berlaku.")) return;
+  var sandi = sandiAcak();
+  tombol.disabled = true;
+  tombol.textContent = "Memproses…";
+  sb.functions.invoke("reset-sandi", { body: { user_id: id, sandi_baru: sandi } })
+    .then(function(r){
+      if(r.error) throw r.error;
+      if(r.data && r.data.error) throw new Error(r.data.error);
+      return sb.from("profil").update({ wajib_ganti: true }).eq("id", id);
+    })
+    .then(function(){ return catat("Setel ulang sandi", sasaran.nama); })
+    .then(function(){
+      alert("Kata sandi " + sasaran.nama + " sekarang:\n\n" + sandi +
+        "\n\nCatat sekarang, pesan ini tidak bisa dibuka lagi. " +
+        "Ia akan diminta menggantinya saat masuk.");
+      kabar("Kata sandi " + sasaran.nama + " disetel ulang.");
+      return muatData();
+    })
+    .then(gambarIsi)
+    .catch(function(e){
+      tombol.disabled = false;
+      tombol.textContent = "Setel ulang sandi";
+      var t = (e && e.message) || "";
+      kabar(/not found|404|Failed to send/i.test(t)
+        ? "Edge Function reset-sandi belum dipasang di Supabase."
+        : pesanGalat(e));
+    });
 }
 
 function buatAkun(){
@@ -1155,7 +1299,9 @@ function bukaDetail(id, peran){
     '<div class="sj-laci-head"><div><h2>' + esc(d.nama) + '</h2>' +
       '<p class="sj-row-meta">' + esc(d.nip) + ' · dikirim ' + waktuRelatif(d.dibuat) + '</p></div>' +
       '<button class="sj-btn sj-btn-teks" data-tutup="1">Tutup</button></div>' +
-    '<div class="sj-laci-status">' + lencana(d.status) + '</div>' +
+    '<div class="sj-laci-status">' + lencana(d.status) +
+      (d.status === "disetujui" ? ' <button class="sj-btn sj-btn-halus" id="d-cetak">Cetak nota usulan</button>' : "") +
+    '</div>' +
     '<div class="sj-lampiran" id="d-lampiran"><div class="sj-lampiran-kosong">Membuka lampiran…</div></div>' +
     baris("Pangkat / golongan", esc(d.pangkat) + " · " + esc(d.golongan)) +
     baris("Jabatan", esc(d.jabatan) || "—") +
@@ -1186,28 +1332,40 @@ function bukaDetail(id, peran){
   pasang("[data-tutup]", "click", tutupLapis, lapis);
   document.addEventListener("keydown", escTutup);
 
-  if(d.fotoPath){
-    sb.storage.from(BUCKET).createSignedUrl(d.fotoPath, 3600).then(function(r){
+  var lampiran = [
+    { jalur:d.fotoPath,       judul:"SK gaji berkala terakhir" },
+    { jalur:d.skPangkatPath,  judul:"SK kenaikan pangkat terakhir" },
+    { jalur:d.skp1Path,       judul:"SKP tahun " + (d.skp1Tahun || "—") },
+    { jalur:d.skp2Path,       judul:"SKP tahun " + (d.skp2Tahun || "—") }
+  ].filter(function(x){ return !!x.jalur; });
+
+  if(!lampiran.length){
+    q("#d-lampiran").innerHTML = '<div class="sj-lampiran-kosong">Berkas ini tidak punya lampiran.</div>';
+  } else {
+    Promise.all(lampiran.map(function(x){
+      return sb.storage.from(BUCKET).createSignedUrl(x.jalur, 3600);
+    })).then(function(hasil){
       var wadah = q("#d-lampiran");
       if(!wadah) return;
-      if(r.error || !r.data){
-        wadah.innerHTML = '<div class="sj-lampiran-kosong">Lampiran tidak bisa dibuka.</div>';
-        return;
-      }
-      var url = r.data.signedUrl;
-      wadah.innerHTML = '<button class="sj-lampiran-img" id="d-zoom"><img src="' + url + '" alt="Lampiran SK"></button>' +
-        (d.namaFoto ? '<div class="sj-bantuan">' + esc(d.namaFoto) + '</div>' : "");
-      q("#d-zoom").addEventListener("click", function(){
+      wadah.innerHTML = lampiran.map(function(x, i){
+        var r = hasil[i];
+        if(r.error || !r.data) return '<div class="sj-lampiran-kosong">' + esc(x.judul) + ' tidak bisa dibuka.</div>';
+        return '<div class="sj-lampiran-satu"><div class="sj-kv-l">' + esc(x.judul) + '</div>' +
+          '<button class="sj-lampiran-img" data-besar="' + r.data.signedUrl + '">' +
+          '<img src="' + r.data.signedUrl + '" alt="' + esc(x.judul) + '"></button></div>';
+      }).join("");
+      pasang("[data-besar]", "click", function(){
+        var url = this.dataset.besar;
         var z = document.createElement("div");
         z.className = "sj-zoom";
-        z.innerHTML = '<img src="' + url + '" alt="Lampiran SK diperbesar">';
+        z.innerHTML = '<img src="' + url + '" alt="Lampiran diperbesar">';
         z.addEventListener("click", function(){ z.remove(); });
         document.body.appendChild(z);
-      });
+      }, wadah);
     });
-  } else {
-    q("#d-lampiran").innerHTML = '<div class="sj-lampiran-kosong">Berkas ini tidak punya lampiran.</div>';
   }
+
+  if(q("#d-cetak")) q("#d-cetak").addEventListener("click", function(){ cetakNota(d); });
 
   if(peran === "admin"){
     pasang("[data-status]", "click", function(){
@@ -1249,6 +1407,203 @@ function hapusBerkas(d){
     tutupLapis(); gambarIsi();
     kabar("Berkas dihapus.");
   }).catch(function(e){ kabar(pesanGalat(e)); });
+}
+
+/* ============================================================
+   Admin — pengingat jatuh tempo
+   ============================================================ */
+function isiPengingat(){
+  var terbaru = {};
+  S.daftar.forEach(function(d){
+    if(!terbaru[d.nip] || d.dibuat > terbaru[d.nip].dibuat) terbaru[d.nip] = d;
+  });
+  var daftar = Object.keys(terbaru).map(function(k){ return terbaru[k]; })
+    .map(function(d){ d._sisa = selisihHari(d.tmtBaru); return d; })
+    .filter(function(d){ return d._sisa !== null && d._sisa <= 180; })
+    .sort(function(a,b){ return a._sisa - b._sisa; });
+
+  var lewat = daftar.filter(function(d){ return d._sisa < 0; });
+  var dekat = daftar.filter(function(d){ return d._sisa >= 0 && d._sisa <= AMBANG_INGAT; });
+  var nanti = daftar.filter(function(d){ return d._sisa > AMBANG_INGAT; });
+
+  function golongan(judul, isi, catatan){
+    if(!isi.length) return "";
+    return '<div class="sj-panel-head sj-mt"><h2>' + judul + '</h2></div>' +
+      '<p class="sj-bantuan">' + catatan + '</p>' +
+      '<div class="sj-tabel sj-mt">' + isi.map(function(d){
+        var teks = d._sisa < 0 ? "terlewat " + Math.abs(d._sisa) + " hari" : d._sisa + " hari lagi";
+        return '<button class="sj-trow sj-row3" data-id="' + d.id + '">' +
+          '<span class="sj-td"><strong>' + esc(d.nama) + '</strong>' +
+            '<span class="sj-row-meta">' + esc(d.nip) + ' · ' + esc(d.unit) + '</span></span>' +
+          '<span class="sj-td">' + tglSingkat(d.tmtBaru) +
+            '<span class="sj-row-meta ' + (d._sisa <= AMBANG_INGAT ? "sj-amber" : "") + '">' + teks + '</span></span>' +
+          '<span class="sj-td sj-td-status">' + lencana(d.status) + '</span></button>';
+      }).join("") + '</div>';
+  }
+
+  var html = '<div class="sj-statbar">' +
+    '<div class="sj-stat"><div class="sj-stat-n sj-rust">' + lewat.length + '</div><div class="sj-stat-l">Sudah terlewat</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n sj-amber">' + dekat.length + '</div><div class="sj-stat-l">Jatuh tempo ≤ ' + AMBANG_INGAT + ' hari</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n">' + nanti.length + '</div><div class="sj-stat-l">Dalam 6 bulan</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n">' + Object.keys(terbaru).length + '</div><div class="sj-stat-l">Pegawai terpantau</div></div></div>' +
+    '<p class="sj-bantuan sj-mt">Daftar disusun dari pengajuan terakhir tiap pegawai. Pegawai yang belum pernah mengirim berkas tidak muncul di sini.</p>';
+
+  if(!daftar.length){
+    html += '<p class="sj-bantuan sj-mt">Tidak ada yang jatuh tempo dalam enam bulan ke depan.</p>';
+  } else {
+    html += golongan("Sudah terlewat", lewat, "Perlu ditindaklanjuti segera, gaji berkalanya sudah lewat tanggal.");
+    html += golongan("Segera jatuh tempo", dekat, "Berkas usulan sebaiknya sudah lengkap sekarang.");
+    html += golongan("Dalam enam bulan", nanti, "Belum mendesak, cukup diingatkan lewat surat edaran biasa.");
+  }
+
+  q("#isi").innerHTML = html;
+  pasang(".sj-trow", "click", function(){ bukaDetail(this.dataset.id, "admin"); }, q("#isi"));
+}
+
+/* ============================================================
+   Admin — tabel gaji pokok
+   ============================================================ */
+function isiGaji(){
+  var perGol = {};
+  S.gaji.forEach(function(b){ (perGol[b.golongan] = perGol[b.golongan] || []).push(b); });
+  var kosong = GOLONGAN.filter(function(g){ return !perGol[g]; });
+
+  var html = '<div class="sj-panel-head"><h2>Tabel gaji pokok</h2>' +
+    '<button class="sj-btn sj-btn-teks" id="g-segar">Muat ulang</button></div>' +
+    '<p class="sj-bantuan">Dipakai untuk mengisi kolom gaji usulan secara otomatis. Sumbernya Lampiran PP Nomor 5 Tahun 2024. ' +
+    'Bila terbit peraturan gaji baru, perbarui angkanya di sini tanpa perlu mengubah kode.</p>';
+
+  if(kosong.length){
+    html += '<div class="sj-galat">Golongan berikut belum ada isinya: ' + kosong.join(", ") +
+      '. Selama kosong, pegawai golongan itu mengisi kolom gaji secara manual.</div>';
+  }
+
+  html += '<div class="sj-panel sj-mt"><div class="sj-panel-head"><h2>Tambah atau perbarui satu baris</h2></div>' +
+    '<div class="sj-grid2">' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="g-gol">' + pilihanGolongan("IV/a") + '</select></label>' +
+      '<label class="sj-field"><span>Masa kerja golongan mulai (tahun)</span><input id="g-mkg" inputmode="numeric" placeholder="0"></label>' +
+      '<label class="sj-field"><span>Gaji pokok</span><input id="g-nilai" inputmode="numeric" placeholder="3.287.800"></label>' +
+    '</div>' +
+    '<p class="sj-bantuan">Isi batas bawahnya saja. Contoh: baris "masa kerja 2 sampai 3 tahun" ditulis 2. ' +
+    'Baris yang sudah ada akan tertimpa.</p>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="g-simpan">Simpan baris</button></div></div>';
+
+  var isiTabel = GOLONGAN.filter(function(g){ return perGol[g]; }).map(function(g){
+    var baris = perGol[g].slice().sort(function(a,b){ return a.mkg_min - b.mkg_min; });
+    return '<div class="sj-panel-head sj-mt"><h2>Golongan ' + g + '</h2>' +
+      '<span class="sj-row-meta">' + baris.length + ' jenjang</span></div>' +
+      '<div class="sj-tabel">' + baris.map(function(b){
+        return '<div class="sj-trow sj-row3 sj-statis">' +
+          '<span class="sj-td">Masa kerja ' + b.mkg_min + ' tahun ke atas</span>' +
+          '<span class="sj-td sj-td-num">' + rupiah(b.gaji) + '</span>' +
+          '<span class="sj-td sj-td-status"><button class="sj-btn sj-btn-teks sj-hapus" data-hapus="' +
+            g + '|' + b.mkg_min + '">Hapus</button></span></div>';
+      }).join("") + '</div>';
+  }).join("");
+
+  q("#isi").innerHTML = html + isiTabel;
+
+  q("#g-segar").addEventListener("click", function(){ muatPendukung().then(gambarIsi); });
+  q("#g-nilai").addEventListener("input", function(){
+    var a = angkaSaja(this.value);
+    this.value = a ? Number(a).toLocaleString("id-ID") : "";
+  });
+  q("#g-simpan").addEventListener("click", function(){
+    var tombol = this;
+    tampilGalat("");
+    var gol = nilai("g-gol"), mkg = angkaSaja(nilai("g-mkg")), gaji = Number(angkaSaja(nilai("g-nilai")));
+    if(mkg === "") return tampilGalat("Isi masa kerja mulai.");
+    if(!gaji) return tampilGalat("Isi besaran gaji pokok.");
+    tombol.disabled = true;
+    sb.from("gaji_pokok").upsert({ golongan: gol, mkg_min: Number(mkg), gaji: gaji })
+      .then(function(r){
+        if(r.error) throw r.error;
+        return catat("Perbarui tabel gaji", gol + " masa kerja " + mkg);
+      })
+      .then(muatPendukung)
+      .then(function(){ isiGaji(); kabar("Baris gaji tersimpan."); })
+      .catch(function(e){ tombol.disabled = false; tampilGalat(pesanGalat(e)); });
+  });
+  pasang("[data-hapus]", "click", function(){
+    var bagian = this.dataset.hapus.split("|");
+    if(!confirm("Hapus baris gaji " + bagian[0] + " masa kerja " + bagian[1] + " tahun?")) return;
+    sb.from("gaji_pokok").delete().eq("golongan", bagian[0]).eq("mkg_min", Number(bagian[1]))
+      .then(muatPendukung).then(function(){ isiGaji(); kabar("Baris dihapus."); })
+      .catch(function(e){ kabar(pesanGalat(e)); });
+  }, q("#isi"));
+}
+
+/* ============================================================
+   Cetak nota usulan KGB
+   ============================================================ */
+function cetakNota(d){
+  var ins = S.instansi || {};
+  var kota = ins.kota || "..............";
+  var hariIni = tglIndo(new Date().toISOString().slice(0,10));
+  var selisih = (d.gajiBaru||0) - (d.gajiLama||0);
+  var mkgBaru = mkgPada(d.mkgTahun, d.mkgBulan, d.tmtLama, d.tmtBaru);
+
+  var isi =
+  '<div class="kop">' +
+    '<div class="kop-nama">' + esc(ins.nama_instansi || "PEMERINTAH DAERAH") + '</div>' +
+    '<div class="kop-satker">' + esc(ins.nama_satker || "") + '</div>' +
+    '<div class="kop-alamat">' + esc(ins.alamat || "") + '</div>' +
+  '</div>' +
+  '<h1>Nota Usulan Kenaikan Gaji Berkala</h1>' +
+  '<p class="nomor">Nomor: ' + esc(d.noNota || "……/……/" + new Date().getFullYear()) + '</p>' +
+  '<p>Bersama ini diusulkan kenaikan gaji berkala bagi pegawai berikut:</p>' +
+  '<table>' +
+    '<tr><td class="l">1. Nama</td><td>: ' + esc(d.nama) + '</td></tr>' +
+    '<tr><td class="l">2. NIP</td><td>: ' + esc(d.nip) + '</td></tr>' +
+    '<tr><td class="l">3. Pangkat / golongan ruang</td><td>: ' + esc(d.pangkat) + ' / ' + esc(d.golongan) + '</td></tr>' +
+    '<tr><td class="l">4. Jabatan</td><td>: ' + esc(d.jabatan || "-") + '</td></tr>' +
+    '<tr><td class="l">5. Unit kerja</td><td>: ' + esc(d.unit) + '</td></tr>' +
+    '<tr><td class="l">6. SK berkala terakhir</td><td>: ' + esc(d.noSk || "-") + ', TMT ' + tglIndo(d.tmtLama) + '</td></tr>' +
+    '<tr><td class="l">7. Gaji pokok lama</td><td>: ' + rupiah(d.gajiLama) + '</td></tr>' +
+    '<tr><td class="l">8. Gaji pokok baru</td><td>: ' + rupiah(d.gajiBaru) +
+      (selisih > 0 ? ' (naik ' + rupiah(selisih) + ')' : "") + '</td></tr>' +
+    '<tr><td class="l">9. Masa kerja golongan</td><td>: ' + mkgBaru + ' tahun pada saat TMT baru</td></tr>' +
+    '<tr><td class="l">10. Terhitung mulai tanggal</td><td>: ' + tglIndo(d.tmtBaru) + '</td></tr>' +
+    '<tr><td class="l">11. Dasar</td><td>: Peraturan Pemerintah Nomor 5 Tahun 2024</td></tr>' +
+  '</table>' +
+  '<p>Berkas pendukung berupa SK kenaikan gaji berkala terakhir, SK kenaikan pangkat terakhir, ' +
+  'serta SKP dua tahun terakhir telah diperiksa dan dinyatakan lengkap.</p>' +
+  '<p>Demikian usulan ini disampaikan untuk dapat diproses sebagaimana mestinya.</p>' +
+  '<div class="ttd">' +
+    '<div>' + esc(kota) + ', ' + hariIni + '</div>' +
+    '<div>' + esc(ins.pejabat_jabatan || "Kepala Bagian Kepegawaian") + '</div>' +
+    '<div class="ruang"></div>' +
+    '<div class="nama">' + esc(ins.pejabat_nama || "……………………………………") + '</div>' +
+    '<div>NIP. ' + esc(ins.pejabat_nip || "……………………………") + '</div>' +
+  '</div>';
+
+  var gaya = '<style>' +
+    '@page{size:A4;margin:2.5cm 2.5cm 2cm 3cm;}' +
+    'body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.5;color:#000;}' +
+    '.kop{text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:22px;}' +
+    '.kop-nama{font-size:14pt;font-weight:bold;text-transform:uppercase;}' +
+    '.kop-satker{font-size:13pt;font-weight:bold;text-transform:uppercase;}' +
+    '.kop-alamat{font-size:10pt;}' +
+    'h1{font-size:13pt;text-align:center;text-decoration:underline;margin:0 0 4px;}' +
+    '.nomor{text-align:center;margin:0 0 22px;}' +
+    'table{width:100%;border-collapse:collapse;margin:14px 0 18px;}' +
+    'td{vertical-align:top;padding:2px 0;}' +
+    'td.l{width:42%;}' +
+    '.ttd{margin-top:34px;width:45%;margin-left:55%;}' +
+    '.ruang{height:70px;}' +
+    '.nama{font-weight:bold;text-decoration:underline;}' +
+    '@media screen{body{max-width:21cm;margin:20px auto;padding:2cm;background:#fff;}}' +
+  '</style>';
+
+  var jendela = window.open("", "_blank");
+  if(!jendela) return kabar("Jendela cetak diblokir peramban. Izinkan pop-up untuk situs ini.");
+  jendela.document.write('<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">' +
+    '<title>Nota usulan KGB - ' + esc(d.nama) + '</title>' + gaya + '</head><body>' + isi + '</body></html>');
+  jendela.document.close();
+  jendela.focus();
+  setTimeout(function(){ jendela.print(); }, 400);
+  catat("Cetak nota usulan", d.nama);
 }
 
 /* ============================================================
