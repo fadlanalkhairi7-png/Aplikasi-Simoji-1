@@ -1207,6 +1207,20 @@ function resetSandi(id, tombol){
     });
 }
 
+/* Baris profil dibuat oleh trigger di basis data sesaat setelah
+   akun terbentuk. Kadang belum terlihat saat langsung dibaca,
+   jadi ditunggu beberapa kali sebelum menyerah. */
+function tungguProfil(id, sisa){
+  sisa = (sisa === undefined) ? 6 : sisa;
+  return sb.from("profil").select("id,peran").eq("id", id).maybeSingle().then(function(r){
+    if(r.data) return r.data;
+    if(sisa <= 0) throw new Error("Profil akun tidak terbentuk. Pastikan supabase.sql sudah dijalankan.");
+    return new Promise(function(res){ setTimeout(res, 400); }).then(function(){
+      return tungguProfil(id, sisa - 1);
+    });
+  });
+}
+
 function buatAkun(){
   var tombol = q("#k-buat");
   tampilGalat("");
@@ -1216,6 +1230,8 @@ function buatAkun(){
   if(nip.length < 8) return tampilGalat("NIP minimal 8 angka.");
   var pesan = periksaSandi(sandi);
   if(pesan) return tampilGalat(pesan);
+  if(S.akun.some(function(a){ return a.nip === nip; }))
+    return tampilGalat("NIP ini sudah punya akun.");
 
   tombol.disabled = true; tombol.textContent = "Menyimpan…";
   sbDua.auth.signUp({
@@ -1223,19 +1239,43 @@ function buatAkun(){
     options: { data: { nip: nip, nama: nama, peran: "pegawai" } }
   }).then(function(r){
     if(r.error) throw r.error;
-    var idBaru = r.data.user && r.data.user.id;
-    return sbDua.auth.signOut().then(function(){
-      return sb.from("profil").update({ peran: peran, wajib_ganti: true }).eq("id", idBaru);
+    var baru = r.data && r.data.user;
+    if(!baru || !baru.id) throw new Error("Server tidak mengembalikan akun baru. Periksa setelan Authentication.");
+    /* Supabase menjawab seolah berhasil bila surelnya sudah terdaftar,
+       tandanya daftar identities kosong. */
+    if(baru.identities && baru.identities.length === 0)
+      throw new Error("NIP ini sudah terdaftar sebelumnya, meski belum tampil di daftar akun.");
+    return sbDua.auth.signOut().then(function(){ return baru.id; });
+  }).then(function(idBaru){
+    return tungguProfil(idBaru).then(function(){
+      return sb.from("profil")
+        .update({ peran: peran, nama: nama, wajib_ganti: true })
+        .eq("id", idBaru)
+        .select("id,peran,nama")
+        .maybeSingle();
+    }).then(function(r){
+      if(r.error) throw r.error;
+      if(!r.data) throw new Error("Akun terbentuk, tapi perannya gagal disimpan. Ubah lewat tombol Jadikan admin.");
+      if(r.data.peran !== peran) throw new Error("Peran tidak tersimpan sebagaimana diminta. Periksa aturan RLS pada tabel profil.");
+      return r.data;
     });
-  }).then(function(r){
-    if(r && r.error) throw r.error;
+  }).then(function(){
     return catat("Buat akun", nama + " sebagai " + peran);
   }).then(muatData).then(function(){
     isiAkun();
-    kabar("Akun " + peran + " untuk " + nama + " dibuat. Kata sandi awal: " + sandi);
+    alert("Akun " + (peran === "admin" ? "admin" : "pegawai") + " untuk " + nama + " berhasil dibuat.\n\n" +
+      "NIP          : " + nip + "\n" +
+      "Kata sandi   : " + sandi + "\n\n" +
+      "Catat sekarang, pesan ini tidak bisa dibuka lagi. " +
+      "Ia akan diminta mengganti kata sandinya saat pertama kali masuk.");
+    kabar("Akun " + nama + " dibuat sebagai " + peran + ".");
   }).catch(function(e){
     tombol.disabled = false; tombol.textContent = "Buat akun";
-    tampilGalat(pesanGalat(e));
+    var t = (e && e.message) || "";
+    tampilGalat(/rate limit|too many|For security purposes/i.test(t)
+      ? "Supabase membatasi jumlah pendaftaran per jam. Tunggu beberapa menit sebelum membuat akun berikutnya."
+      : pesanGalat(e));
+    muatData().then(function(){ /* daftar tetap disegarkan agar terlihat apa adanya */ });
   });
 }
 
@@ -1675,10 +1715,22 @@ sb.auth.getSession().then(function(r){
   app.innerHTML = '<div class="sj-muat">Gagal menghubungi Supabase.<br><br>' + esc(pesanGalat(e)) + '</div>';
 });
 
+/* Penyegaran berkala hanya untuk tab yang isinya sekadar daftar.
+   Tab dengan formulir dilewati, dan penyegaran ditunda selama
+   ada kolom isian yang sedang disentuh, supaya ketikan tidak hilang. */
+var TAB_AMAN = { beranda:1, ingat:1, log:1 };
+
+function bolehSegarOtomatis(){
+  if(!S.sesi || S.sesi.peran !== "admin") return false;
+  if(lapis.innerHTML) return false;
+  if(!TAB_AMAN[S.tab]) return false;
+  var f = document.activeElement;
+  if(f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) return false;
+  return true;
+}
+
 setInterval(function(){
-  if(S.sesi && S.sesi.peran === "admin" && !lapis.innerHTML){
-    muatData().then(gambarIsi);
-  }
+  if(bolehSegarOtomatis()) muatData().then(gambarIsi);
 }, 20000);
 </script>
 </body>
