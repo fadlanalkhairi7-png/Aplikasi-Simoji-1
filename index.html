@@ -3,24 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simoji — Monitoring Kenaikan Gaji Berkala</title>
+<title>SIMOJI — Bawaslu Provinsi Nusa Tenggara Barat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --biru-tua:#0A3355; --biru:#125881; --biru-muda:#4A8FB8;
-  --hijau-tua:#0C5A44; --hijau:#127A5C; --hijau-muda:#37A57C;
-  --tinta:#12303C; --tinta-lembut:#4F6B76;
-  --garis:#BBD1CB; --garis-tipis:#D3E2DD; --kertas:#FBFDFC;
-  --amber:#95610B; --rust:#8C3520;
+  /* merah bata ke jingga, mengikuti warna kelembagaan Bawaslu */
+  --biru-tua:#8C1A10; --biru:#C0390F; --biru-muda:#E8853F;
+  --merah:#8C1A10; --oranye:#E2620F; --oranye-muda:#F59B3C;
+  --hijau-tua:#1A6340; --hijau:#227A50; --hijau-muda:#3BA170;
+  --tinta:#3A1A11; --tinta-lembut:#7A574A;
+  --garis:#E8C8B0; --garis-tipis:#F3DECE; --kertas:#FFFBF7;
+  --amber:#96600A; --rust:#8C2B15;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{
   font-family:'Archivo','Segoe UI',system-ui,sans-serif;
   color:var(--tinta); font-size:15px; line-height:1.5; min-height:100vh;
-  background:linear-gradient(160deg,#DCEDE5 0%,#DFEDEF 50%,#DAE8F4 100%);
+  background:linear-gradient(160deg,#FDEADA 0%,#FBDFCC 52%,#F8D3C3 100%);
   background-attachment:fixed; -webkit-font-smoothing:antialiased;
 }
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--biru);outline-offset:2px;}
@@ -30,42 +32,43 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-lambang{display:flex;gap:4px;align-items:flex-end;height:32px;}
 .sj-lambang span{display:block;width:6px;background:var(--biru-tua);}
 .sj-lambang span:nth-child(1){height:32px;}
-.sj-lambang span:nth-child(2){height:20px;background:var(--hijau-muda);}
-.sj-lambang span:nth-child(3){height:26px;background:var(--hijau-tua);}
+.sj-lambang span:nth-child(2){height:20px;background:var(--oranye-muda);}
+.sj-lambang span:nth-child(3){height:26px;background:var(--oranye);}
 .sj-lambang-kecil{height:22px;gap:3px;}
 .sj-lambang-kecil span{width:4px;background:#fff;}
 .sj-lambang-kecil span:nth-child(1){height:22px;}
-.sj-lambang-kecil span:nth-child(2){height:13px;background:#7FD6B4;}
-.sj-lambang-kecil span:nth-child(3){height:18px;background:#B7E2D4;}
+.sj-lambang-kecil span:nth-child(2){height:13px;background:#FFC48A;}
+.sj-lambang-kecil span:nth-child(3){height:18px;background:#FFDFC6;}
 
 .sj-masuk{display:grid;grid-template-columns:1.05fr 1fr;min-height:100vh;}
-.sj-masuk-kiri{background:linear-gradient(155deg,#0A3355 0%,#125881 50%,#0C5A44 100%);color:#E9F5F0;padding:52px 46px;display:flex;flex-direction:column;gap:10px;justify-content:center;}
+.sj-masuk-kiri{background:linear-gradient(155deg,#6E120A 0%,#B8320E 48%,#E2620F 100%);color:#FFF4EC;padding:52px 46px;display:flex;flex-direction:column;gap:10px;justify-content:center;}
 .sj-brand{font-size:50px;font-weight:700;letter-spacing:-0.03em;margin:10px 0 0;}
-.sj-brand-sub{font-family:'Archivo Narrow',sans-serif;font-size:17px;color:#A6CADB;margin:0;}
-.sj-masuk-teks{max-width:40ch;color:#CDE5DC;margin:16px 0 0;}
-.sj-masuk-daftar{max-width:42ch;margin:22px 0 0;padding:16px 0 0 18px;border-top:1px solid rgba(255,255,255,.22);color:#A8C7C6;font-size:13px;line-height:1.7;}
+.sj-brand-sub{font-family:'Archivo Narrow',sans-serif;font-size:17px;color:#F7CFAE;margin:0;}
+.sj-lembaga{font-family:'Archivo Narrow',sans-serif;font-size:15px;font-weight:600;color:#FFD9BC;margin:6px 0 0;line-height:1.35;letter-spacing:.01em;}
+.sj-masuk-teks{max-width:40ch;color:#FCE3D3;margin:16px 0 0;}
+.sj-masuk-daftar{max-width:42ch;margin:22px 0 0;padding:16px 0 0 18px;border-top:1px solid rgba(255,255,255,.22);color:#F2C8AA;font-size:13px;line-height:1.7;}
 .sj-masuk-kanan{padding:52px 46px;display:flex;flex-direction:column;gap:16px;justify-content:center;max-width:560px;background:rgba(255,255,255,.62);}
 .sj-tabs{display:flex;border-bottom:1px solid var(--garis);}
 .sj-tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 2px;margin-right:26px;font:inherit;color:var(--tinta-lembut);cursor:pointer;}
-.sj-tab.aktif{color:var(--biru-tua);border-bottom-color:var(--hijau);font-weight:600;}
+.sj-tab.aktif{color:var(--merah);border-bottom-color:var(--oranye);font-weight:600;}
 .sj-segmen{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--garis);border-radius:2px;overflow:hidden;background:#fff;}
 .sj-segmen button{padding:11px 10px;background:none;border:none;font:inherit;font-size:14px;color:var(--tinta-lembut);cursor:pointer;}
 .sj-segmen button + button{border-left:1px solid var(--garis);}
 .sj-segmen button.aktif{background:var(--biru-tua);color:#EAF5F1;font-weight:600;}
 
-.sj-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;background:var(--biru-tua);border-bottom:3px solid var(--hijau);color:#E9F5F0;flex-wrap:wrap;}
+.sj-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;background:linear-gradient(95deg,#8C1A10 0%,#C0390F 60%,#E2620F 100%);border-bottom:3px solid var(--oranye-muda);color:#FFF4EC;flex-wrap:wrap;}
 .sj-bar-kiri{display:flex;align-items:center;gap:12px;}
 .sj-bar-nama{font-weight:700;font-size:20px;letter-spacing:-0.02em;line-height:1.1;}
-.sj-bar-sub{font-family:'Archivo Narrow',sans-serif;font-size:13px;color:#A6CADB;}
+.sj-bar-sub{font-family:'Archivo Narrow',sans-serif;font-size:13px;color:#F7CFAE;}
 .sj-bar-kanan{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .sj-pengguna{font-size:14px;}
-.sj-bar-nip{font-family:'Archivo Narrow',sans-serif;color:#A6CADB;}
-.sj-bar .sj-btn-teks{color:#C4E5D9;}
+.sj-bar-nip{font-family:'Archivo Narrow',sans-serif;color:#F7CFAE;}
+.sj-bar .sj-btn-teks{color:#FBDCC5;}
 .sj-bar .sj-btn-teks:hover{color:#fff;}
 .sj-nav{display:flex;background:rgba(255,255,255,.72);border-bottom:1px solid var(--garis);padding:0 28px;overflow-x:auto;}
 .sj-navbtn{background:none;border:none;border-bottom:3px solid transparent;padding:12px 4px;margin-right:26px;font:inherit;color:var(--tinta-lembut);cursor:pointer;white-space:nowrap;}
-.sj-navbtn.aktif{color:var(--biru-tua);border-bottom-color:var(--hijau);font-weight:600;}
-.sj-kabar{padding:10px 28px;background:var(--hijau-tua);color:#EAF6F1;font-size:14px;}
+.sj-navbtn.aktif{color:var(--merah);border-bottom-color:var(--oranye);font-weight:600;}
+.sj-kabar{padding:10px 28px;background:var(--merah);color:#FFF4EC;font-size:14px;}
 .sj-isi{padding:26px 28px;max-width:1120px;margin:0 auto;}
 .sj-kaki{padding:20px 28px 40px;max-width:1120px;margin:0 auto;color:var(--tinta-lembut);font-size:13px;border-top:1px solid var(--garis);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 
@@ -101,7 +104,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-aksi-kanan{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 
 .sj-tabel{border:1px solid var(--garis);background:rgba(255,255,255,.66);}
-.sj-thead{display:grid;gap:16px;padding:9px 14px;background:rgba(10,51,85,.06);border-bottom:1px solid var(--garis);font-family:'Archivo Narrow',sans-serif;font-size:13px;color:var(--tinta-lembut);}
+.sj-thead{display:grid;gap:16px;padding:9px 14px;background:rgba(140,26,16,.07);border-bottom:1px solid var(--garis);font-family:'Archivo Narrow',sans-serif;font-size:13px;color:var(--tinta-lembut);}
 .sj-trow{display:grid;gap:16px;align-items:center;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--garis-tipis);padding:12px 14px;font:inherit;color:inherit;cursor:pointer;}
 .sj-trow:last-child{border-bottom:none;}
 .sj-trow:hover{background:#fff;}
@@ -127,7 +130,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-panel-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
 .sj-panel-head h2{font-size:23px;font-weight:600;letter-spacing:-0.02em;margin:0;color:var(--biru-tua);}
 .sj-mt{margin-top:26px;}
-.sj-sub{font-family:'Archivo Narrow',sans-serif;font-size:15px;color:var(--hijau-tua);border-bottom:1px solid var(--garis);padding-bottom:6px;margin:22px 0 14px;}
+.sj-sub{font-family:'Archivo Narrow',sans-serif;font-size:15px;color:var(--merah);border-bottom:1px solid var(--garis);padding-bottom:6px;margin:22px 0 14px;}
 .sj-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;}
 .sj-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
 .sj-field > span{font-family:'Archivo Narrow',sans-serif;font-size:14px;color:var(--tinta-lembut);}
@@ -146,7 +149,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-kekuatan-bar span.terisi.t3{background:var(--hijau);}
 .sj-kekuatan-bar span.terisi.t4{background:var(--hijau-tua);}
 
-.sj-drop{width:100%;display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:20px;background:var(--kertas);border:1px dashed var(--hijau);border-radius:2px;font:inherit;color:var(--tinta);cursor:pointer;}
+.sj-drop{width:100%;display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:20px;background:var(--kertas);border:1px dashed var(--oranye);border-radius:2px;font:inherit;color:var(--tinta);cursor:pointer;}
 .sj-drop span{font-size:13px;color:var(--tinta-lembut);}
 .sj-pratinjau{display:flex;gap:16px;align-items:flex-start;}
 .sj-pratinjau img{width:150px;height:110px;object-fit:cover;border:1px solid var(--garis);}
@@ -176,8 +179,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-kosong h2{font-size:27px;font-weight:600;letter-spacing:-0.02em;margin:0 0 8px;color:var(--biru-tua);}
 .sj-kosong p{color:var(--tinta-lembut);margin:0 0 18px;}
 
-.sj-tirai{position:fixed;inset:0;background:rgba(10,51,85,.5);display:flex;justify-content:flex-end;z-index:40;}
-.sj-laci{width:min(560px,100%);background:var(--kertas);height:100%;overflow-y:auto;padding:24px 26px 40px;border-left:4px solid var(--hijau);animation:sj-geser .2s ease-out;}
+.sj-tirai{position:fixed;inset:0;background:rgba(92,20,12,.52);display:flex;justify-content:flex-end;z-index:40;}
+.sj-laci{width:min(560px,100%);background:var(--kertas);height:100%;overflow-y:auto;padding:24px 26px 40px;border-left:4px solid var(--oranye);animation:sj-geser .2s ease-out;}
 .sj-laci-kecil{width:min(440px,100%);}
 @keyframes sj-geser{from{transform:translateX(26px);opacity:.4}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.sj-laci{animation:none}.sj-ruler-fill,.sj-ruler-mark{transition:none}}
@@ -192,8 +195,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-kv{display:grid;grid-template-columns:170px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid var(--garis-tipis);align-items:baseline;}
 .sj-kv-l{font-family:'Archivo Narrow',sans-serif;font-size:14px;color:var(--tinta-lembut);}
 .sj-kv-v{font-size:15px;}
-.sj-verifikasi{margin-top:22px;padding-top:18px;border-top:2px solid var(--hijau);}
-.sj-zoom{position:fixed;inset:0;background:rgba(10,51,85,.92);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50;cursor:zoom-out;}
+.sj-verifikasi{margin-top:22px;padding-top:18px;border-top:2px solid var(--oranye);}
+.sj-zoom{position:fixed;inset:0;background:rgba(92,20,12,.93);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50;cursor:zoom-out;}
 .sj-zoom img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;}
 
 @media (max-width:900px){
@@ -518,13 +521,14 @@ function gambarMasuk(){
   '<div class="sj-masuk">' +
     '<aside class="sj-masuk-kiri">' +
       '<div class="sj-lambang"><span></span><span></span><span></span></div>' +
-      '<h1 class="sj-brand">Simoji</h1>' +
-      '<p class="sj-brand-sub">Sistem monitoring kenaikan gaji berkala</p>' +
-      '<p class="sj-masuk-teks">Pegawai mencatat SK berkala terakhir beserta pindaiannya. Bagian kepegawaian memeriksa berkas yang masuk, lalu menyetujui atau mengembalikannya untuk diperbaiki.</p>' +
+      '<h1 class="sj-brand">SIMOJI</h1>' +
+      '<p class="sj-brand-sub">Sistem Informasi Monitoring Gaji Berkala</p>' +
+      '<p class="sj-lembaga">Badan Pengawas Pemilihan Umum<br>Provinsi Nusa Tenggara Barat</p>' +
+      '<p class="sj-masuk-teks">Pegawai mengirim usulan kenaikan gaji berkala beserta SK kenaikan pangkat terakhir dan SKP dua tahun terakhir. Bagian kepegawaian memeriksa, lalu menyetujui atau mengembalikannya untuk diperbaiki.</p>' +
       '<ul class="sj-masuk-daftar">' +
-        '<li>Akun dan kata sandi diverifikasi di server Supabase, bukan di peramban.</li>' +
-        '<li>Setiap orang hanya bisa membaca berkasnya sendiri; aturan itu dijaga basis data.</li>' +
-        '<li>Data tersimpan di server, jadi bisa dibuka dari perangkat mana pun.</li>' +
+        '<li>Akun dan kata sandi diverifikasi di server, bukan di peramban.</li>' +
+        '<li>Setiap pegawai hanya bisa membaca berkasnya sendiri.</li>' +
+        '<li>Data tersimpan terpusat, bisa dibuka dari perangkat mana pun.</li>' +
       '</ul>' +
     '</aside>' +
     '<section class="sj-masuk-kanan">' +
@@ -696,15 +700,15 @@ function periksaAdmin(){
 function gambar(){
   if(!S.sesi) return gambarMasuk();
   var menu = S.sesi.peran === "admin"
-    ? [["beranda","Berkas pengajuan"],["ingat","Pengingat"],["akun","Akun pengguna"],
-       ["gaji","Tabel gaji"],["log","Log aktivitas"]]
-    : [["beranda","Beranda"],["ajukan","Pengajuan baru"],["profil","Profil"]];
+    ? [["beranda","Beranda"],["pegawai","Data Pegawai"],["usulan","Usulan"],
+       ["akun","Akun pengguna"],["gaji","Tabel gaji"],["log","Log aktivitas"]]
+    : [["beranda","Beranda"],["ajukan","Kirim usulan"],["profil","Profil"]];
 
   app.innerHTML =
   '<header class="sj-bar"><div class="sj-bar-kiri">' +
     '<div class="sj-lambang sj-lambang-kecil"><span></span><span></span><span></span></div>' +
-    '<div><div class="sj-bar-nama">Simoji</div><div class="sj-bar-sub">' +
-      (S.sesi.peran === "admin" ? "Panel kepegawaian" : "Panel pegawai") + '</div></div></div>' +
+    '<div><div class="sj-bar-nama">SIMOJI</div><div class="sj-bar-sub">' +
+      'Bawaslu Provinsi NTB · ' + (S.sesi.peran === "admin" ? "Panel kepegawaian" : "Panel pegawai") + '</div></div></div>' +
     '<div class="sj-bar-kanan"><span class="sj-pengguna">' + esc(S.sesi.nama) +
       '<span class="sj-bar-nip"> · ' + esc(S.sesi.nip) + '</span></span>' +
       '<button class="sj-btn sj-btn-teks" id="b-sandi">Ubah sandi</button>' +
@@ -715,7 +719,7 @@ function gambar(){
   '<div id="kabar" class="sembunyi"></div>' +
   '<main class="sj-isi" id="isi"></main>' +
   '<footer class="sj-kaki"><span>Kenaikan gaji berkala dihitung setiap dua tahun sejak TMT terakhir. Pengajuan sebaiknya dikirim dua bulan sebelum jatuh tempo.</span>' +
-  '<span class="sj-row-meta">Data tersimpan di Supabase.</span></footer>';
+  '<span class="sj-row-meta">Bawaslu Provinsi Nusa Tenggara Barat</span></footer>';
 
   q("#b-keluar").addEventListener("click", keluar);
   q("#b-sandi").addEventListener("click", function(){ bukaUbahSandi(false); });
@@ -726,11 +730,12 @@ function gambar(){
 function gambarIsi(){
   qq(".sj-navbtn").forEach(function(b){ b.classList.toggle("aktif", b.dataset.tab === S.tab); });
   if(S.sesi.peran === "admin"){
-    if(S.tab === "akun") return isiAkun();
-    if(S.tab === "log")  return isiLog();
-    if(S.tab === "ingat") return isiPengingat();
-    if(S.tab === "gaji") return isiGaji();
-    return isiBerkas();
+    if(S.tab === "akun")    return isiAkun();
+    if(S.tab === "log")     return isiLog();
+    if(S.tab === "pegawai") return isiDataPegawai();
+    if(S.tab === "usulan")  return isiBerkas();
+    if(S.tab === "gaji")    return isiGaji();
+    return isiPengingat();
   }
   if(S.tab === "ajukan") return isiForm();
   if(S.tab === "profil") return isiProfil();
@@ -1450,7 +1455,103 @@ function hapusBerkas(d){
 }
 
 /* ============================================================
-   Admin — pengingat jatuh tempo
+   Admin — data pegawai
+   ============================================================ */
+function isiDataPegawai(){
+  var terbaru = {};
+  S.daftar.forEach(function(d){
+    if(!terbaru[d.nip] || d.dibuat > terbaru[d.nip].dibuat) terbaru[d.nip] = d;
+  });
+
+  var cari = S.cari.trim().toLowerCase();
+  var orang = S.akun.filter(function(a){ return a.peran === "pegawai"; })
+    .map(function(a){
+      var u = terbaru[a.nip];
+      var p = a.profil || {};
+      return {
+        id:a.id, nip:a.nip, nama:a.nama,
+        pangkat: p.pangkat || (u ? u.pangkat : ""),
+        golongan: p.golongan || (u ? u.golongan : ""),
+        unit: p.unit || (u ? u.unit : ""),
+        kgb: u ? u.tmtBaru : "", kgbLama: u ? u.tmtLama : "",
+        usulan: u ? u.id : null, status: u ? u.status : null
+      };
+    })
+    .filter(function(o){
+      return !cari || o.nama.toLowerCase().indexOf(cari) >= 0 || o.nip.indexOf(cari) >= 0 ||
+        String(o.unit).toLowerCase().indexOf(cari) >= 0;
+    })
+    .sort(function(a,b){ return a.nama.localeCompare(b.nama); });
+
+  var lengkap = orang.filter(function(o){ return o.kgb; }).length;
+
+  var html =
+  '<div class="sj-statbar sj-statbar-2">' +
+    '<div class="sj-stat"><div class="sj-stat-n">' + orang.length + '</div><div class="sj-stat-l">Pegawai terdaftar</div></div>' +
+    '<div class="sj-stat"><div class="sj-stat-n sj-hijau">' + lengkap + '</div><div class="sj-stat-l">Sudah punya data KGB</div></div>' +
+  '</div>' +
+  '<div class="sj-toolbar"><div class="sj-chips"><span class="sj-row-meta">' +
+    'Daftar pegawai beserta data kepegawaian dan kenaikan gaji berkala terakhirnya.</span></div>' +
+    '<div class="sj-aksi-kanan">' +
+      '<input class="sj-cari" id="dp-cari" value="' + esc(S.cari) + '" placeholder="Cari nama, NIP, atau unit kerja">' +
+      '<button class="sj-btn sj-btn-teks" id="dp-segar">Muat ulang</button>' +
+      '<button class="sj-btn sj-btn-halus" id="dp-csv"' + (orang.length ? "" : " disabled") + '>Unduh CSV</button>' +
+    '</div></div>';
+
+  if(!orang.length){
+    html += '<p class="sj-bantuan">Belum ada pegawai yang cocok. Akun pegawai bisa dibuat lewat menu Akun pengguna.</p>';
+  } else {
+    html += '<div class="sj-tabel"><div class="sj-thead sj-row5"><span>Nama</span><span>NIP</span>' +
+      '<span>Pangkat / golongan</span><span>Unit kerja</span><span>KGB terakhir</span></div>' +
+      orang.map(function(o){
+        var s = o.kgb ? selisihHari(o.kgb) : null;
+        return '<button class="sj-trow sj-row5" data-usulan="' + (o.usulan || "") + '" data-nama="' + esc(o.nama) + '">' +
+          '<span class="sj-td"><strong>' + esc(o.nama) + '</strong>' +
+            (o.status ? '<span class="sj-row-meta">usulan ' + (STATUS[o.status]||{}).label.toLowerCase() + '</span>' : '<span class="sj-row-meta">belum mengirim usulan</span>') + '</span>' +
+          '<span class="sj-td sj-td-num">' + esc(o.nip) + '</span>' +
+          '<span class="sj-td">' + esc(o.pangkat || "—") +
+            '<span class="sj-row-meta">' + esc(o.golongan || "") + '</span></span>' +
+          '<span class="sj-td">' + esc(o.unit || "—") + '</span>' +
+          '<span class="sj-td">' + (o.kgb ? tglSingkat(o.kgb) : "—") +
+            (s !== null ? '<span class="sj-row-meta' + (s <= AMBANG_INGAT ? " sj-amber" : "") + '">' +
+              (s >= 0 ? s + " hari lagi" : "terlewat " + Math.abs(s) + " hari") + '</span>' : "") + '</span>' +
+          '</button>';
+      }).join("") + '</div>';
+  }
+
+  q("#isi").innerHTML = html;
+  q("#dp-segar").addEventListener("click", function(){ muatData().then(gambarIsi); });
+  q("#dp-cari").addEventListener("input", function(){
+    S.cari = this.value;
+    var pos = this.selectionStart;
+    isiDataPegawai();
+    var baru = q("#dp-cari");
+    baru.focus(); baru.setSelectionRange(pos, pos);
+  });
+  q("#dp-csv").addEventListener("click", function(){
+    var kolom = ["Nama","NIP","Pangkat","Golongan","Unit kerja","KGB terakhir","KGB berikutnya"];
+    var isi = [kolom].concat(orang.map(function(o){
+      return [o.nama, o.nip, o.pangkat, o.golongan, o.unit, o.kgbLama, o.kgb];
+    }));
+    var csv = isi.map(function(r){
+      return r.map(function(x){ return '"' + String(x == null ? "" : x).replace(/"/g,'""') + '"'; }).join(",");
+    }).join("\n");
+    var url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv;charset=utf-8" }));
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "data-pegawai-" + new Date().toISOString().slice(0,10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  pasang(".sj-trow", "click", function(){
+    var id = this.dataset.usulan;
+    if(id) return bukaDetail(id, "admin");
+    kabar(this.dataset.nama + " belum pernah mengirim usulan, jadi berkasnya belum ada.");
+  }, q("#isi"));
+}
+
+/* ============================================================
+   Admin — beranda: ringkasan dan pengingat jatuh tempo
    ============================================================ */
 function isiPengingat(){
   var terbaru = {};
@@ -1481,7 +1582,9 @@ function isiPengingat(){
       }).join("") + '</div>';
   }
 
-  var html = '<div class="sj-statbar">' +
+  var html = '<div class="sj-panel-head"><h2>Pengingat jatuh tempo</h2>' +
+    '<span class="sj-row-meta">' + S.daftar.length + ' usulan tercatat</span></div>' +
+    '<div class="sj-statbar">' +
     '<div class="sj-stat"><div class="sj-stat-n sj-rust">' + lewat.length + '</div><div class="sj-stat-l">Sudah terlewat</div></div>' +
     '<div class="sj-stat"><div class="sj-stat-n sj-amber">' + dekat.length + '</div><div class="sj-stat-l">Jatuh tempo ≤ ' + AMBANG_INGAT + ' hari</div></div>' +
     '<div class="sj-stat"><div class="sj-stat-n">' + nanti.length + '</div><div class="sj-stat-l">Dalam 6 bulan</div></div>' +
@@ -1718,7 +1821,7 @@ sb.auth.getSession().then(function(r){
 /* Penyegaran berkala hanya untuk tab yang isinya sekadar daftar.
    Tab dengan formulir dilewati, dan penyegaran ditunda selama
    ada kolom isian yang sedang disentuh, supaya ketikan tidak hilang. */
-var TAB_AMAN = { beranda:1, ingat:1, log:1 };
+var TAB_AMAN = { beranda:1, usulan:1, pegawai:1, log:1 };
 
 function bolehSegarOtomatis(){
   if(!S.sesi || S.sesi.peran !== "admin") return false;
