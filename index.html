@@ -261,27 +261,171 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <div id="app"><div class="sj-muat">Menyiapkan Simoji…</div></div>
 <div id="lapis"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 "use strict";
 
 /* ============================================================
    Sambungan Supabase
    ============================================================ */
-var SB_URL = "https://jmubbpsnjxkrazebqmrj.supabase.co";
-var SB_KEY = "sb_publishable_SKcn4cQrOBdG8eo6fZfAOA_QxaA5jzW";
-var DOMAIN = "simoji.local";   // NIP dipetakan jadi <nip>@simoji.local
-var BUCKET = "berkas-kgb";
+/* Alamat Web App Google Apps Script. Ganti dengan milik Anda
+   setelah skrip diterbitkan; lihat PANDUAN.md bagian 1. */
+var SKRIP_URL = "https://script.google.com/macros/s/AKfycbzz9WVdn7pydUqRwtgcvNn1YfepDp6tibnsYxqSk0eo_ETiE-rW64PPCc2TxF48NSWU-Q/exec";
 
-var sb = window.supabase.createClient(SB_URL, SB_KEY);
+var KUNCI_TOKEN = "simoji:token";
+var BUCKET = "lampiran";
+var suratDariNip = function(nip){ return nip; };
 
-/* klien kedua: dipakai admin untuk mendaftarkan orang lain
-   tanpa mengganggu sesinya sendiri */
-var sbDua = window.supabase.createClient(SB_URL, SB_KEY, {
-  auth: { persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:"sb-simoji-kedua" }
-});
+function ambilToken(){ try{ return localStorage.getItem(KUNCI_TOKEN) || ""; }catch(e){ return tokenSementara; } }
+var tokenSementara = "";
+function simpanToken(t){
+  tokenSementara = t || "";
+  try{ t ? localStorage.setItem(KUNCI_TOKEN, t) : localStorage.removeItem(KUNCI_TOKEN); }catch(e){}
+}
 
-var suratDariNip = function(nip){ return nip + "@" + DOMAIN; };
+/* Satu-satunya jalan keluar-masuk data. Apps Script menolak
+   permintaan dengan kepala khusus, jadi dipakai text/plain. */
+function panggil(aksi, muatan){
+  if(SKRIP_URL.indexOf("GANTI_DENGAN") === 0)
+    return Promise.reject(new Error("Alamat Web App belum diisi di index.html."));
+  return fetch(SKRIP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ aksi: aksi, muatan: muatan || {}, token: ambilToken() })
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if(j && j.error) throw new Error(j.error);
+    return j && j.data;
+  });
+}
+
+/* --- penyambung bergaya kueri, agar sisa kode tidak berubah --- */
+function Kueri(tabel){
+  this.m = { tabel: tabel, op: "select", where: [], data: null, order: null, limit: null };
+  this.kembali = null;
+}
+Kueri.prototype.select = function(){
+  if(this.m.op !== "select") this.kembali = this.kembali || "array";
+  return this;
+};
+Kueri.prototype.insert = function(d){ this.m.op = "insert"; this.m.data = d; return this; };
+Kueri.prototype.update = function(d){ this.m.op = "update"; this.m.data = d; return this; };
+Kueri.prototype.upsert = function(d){ this.m.op = "upsert"; this.m.data = d; return this; };
+Kueri.prototype["delete"] = function(){ this.m.op = "delete"; return this; };
+Kueri.prototype.eq = function(k, v){ this.m.where.push([k, "eq", v]); return this; };
+Kueri.prototype["in"] = function(k, arr){ this.m.where.push([k, "in", arr]); return this; };
+Kueri.prototype.order = function(k, opt){
+  this.m.order = { kolom: k, naik: !(opt && opt.ascending === false) };
+  return this;
+};
+Kueri.prototype.limit = function(n){ this.m.limit = n; return this; };
+Kueri.prototype.maybeSingle = function(){ this.kembali = "satu"; return this; };
+Kueri.prototype.single = function(){ this.kembali = "satu"; return this; };
+Kueri.prototype.then = function(lanjut, gagal){
+  var diri = this;
+  return panggil("kueri", this.m).then(function(baris){
+    var isi = baris || [];
+    return { data: diri.kembali === "satu" ? (isi[0] || null) : isi, error: null };
+  }).catch(function(e){
+    return { data: null, error: e };
+  }).then(lanjut, gagal);
+};
+
+var sb = {
+  from: function(t){ return new Kueri(t); },
+  rpc: function(nama){
+    var peta = { ada_admin: "adaAdmin", nomor_kolektif_berikut: "nomorKolektif" };
+    return panggil(peta[nama] || nama, {})
+      .then(function(d){ return { data: d, error: null }; })
+      .catch(function(e){ return { data: null, error: e }; });
+  },
+  functions: {
+    invoke: function(nama, opsi){
+      return panggil("resetSandi", (opsi && opsi.body) || {})
+        .then(function(d){ return { data: d, error: null }; })
+        .catch(function(e){ return { data: null, error: e }; });
+    }
+  },
+  storage: {
+    from: function(){
+      return {
+        upload: function(jalur, blob){
+          return new Promise(function(res){
+            var fr = new FileReader();
+            fr.onload = function(){
+              panggil("unggah", { isi: String(fr.result).split(",")[1], jenis: blob.type, label: "sk" })
+                .then(function(d){ res({ data: d, error: null }); })
+                .catch(function(e){ res({ data: null, error: e }); });
+            };
+            fr.onerror = function(){ res({ data: null, error: new Error("Berkas gagal dibaca.") }); };
+            fr.readAsDataURL(blob);
+          });
+        },
+        createSignedUrl: function(jalur){
+          return panggil("berkas", { path: jalur })
+            .then(function(d){ return { data: { signedUrl: d.url }, error: null }; })
+            .catch(function(e){ return { data: null, error: e }; });
+        },
+        remove: function(jalur){
+          return panggil("hapusBerkas", { paths: jalur })
+            .then(function(){ return { data: null, error: null }; })
+            .catch(function(e){ return { data: null, error: e }; });
+        }
+      };
+    }
+  },
+  auth: {
+    signInWithPassword: function(k){
+      return panggil("masuk", { nip: k.email, sandi: k.password }).then(function(d){
+        simpanToken(d.token);
+        sb._profil = d.profil;
+        return { data: d, error: null };
+      }).catch(function(e){ return { data: null, error: e }; });
+    },
+    signUp: function(k){
+      var m = (k.options && k.options.data) || {};
+      return panggil("daftar", { nip: k.email, sandi: k.password, nama: m.nama, peran: m.peran })
+        .then(function(d){
+          simpanToken(d.token);
+          sb._profil = d.profil;
+          return { data: { session: { token: d.token }, user: { id: d.profil.id, identities: [1] } }, error: null };
+        }).catch(function(e){ return { data: null, error: e }; });
+    },
+    signOut: function(){ simpanToken(""); sb._profil = null; return Promise.resolve({ error: null }); },
+    getUser: function(){
+      if(sb._profil) return Promise.resolve({ data: { user: { id: sb._profil.id } } });
+      if(!ambilToken()) return Promise.resolve({ data: { user: null } });
+      return panggil("sesi", {}).then(function(p){
+        sb._profil = p;
+        return { data: { user: { id: p.id } } };
+      }).catch(function(){ simpanToken(""); return { data: { user: null } }; });
+    },
+    getSession: function(){
+      if(!ambilToken()) return Promise.resolve({ data: { session: null } });
+      return panggil("sesi", {}).then(function(p){
+        sb._profil = p;
+        return { data: { session: { token: ambilToken() } } };
+      }).catch(function(){ simpanToken(""); return { data: { session: null } }; });
+    },
+    updateUser: function(k){
+      return panggil("gantiSandi", { sandi_baru: k.password })
+        .then(function(){ return { data: null, error: null }; })
+        .catch(function(e){ return { data: null, error: e }; });
+    }
+  },
+  _profil: null
+};
+
+/* Admin mendaftarkan orang lain tanpa mengganggu sesinya sendiri. */
+var sbDua = {
+  auth: {
+    signUp: function(k){
+      var m = (k.options && k.options.data) || {};
+      return panggil("buatAkun", { nip: k.email, sandi: k.password, nama: m.nama, peran: "pegawai" })
+        .then(function(p){ return { data: { user: { id: p.id, identities: [1] } }, error: null }; })
+        .catch(function(e){ return { data: null, error: e }; });
+    },
+    signOut: function(){ return Promise.resolve({ error: null }); }
+  }
+};
 
 /* ============================================================
    Utilitas
@@ -668,13 +812,11 @@ function kirimDaftar(){
    Muat data
    ============================================================ */
 function muatProfil(){
-  return sb.auth.getUser().then(function(r){
-    if(!r.data || !r.data.user) return null;
-    return sb.from("profil").select("*").eq("id", r.data.user.id).maybeSingle();
-  }).then(function(res){
-    if(!res || res.error || !res.data) return null;
-    return dariProfil(res.data);
-  });
+  if(!ambilToken()) return Promise.resolve(null);
+  return panggil("sesi", {}).then(function(p){
+    sb._profil = p;
+    return dariProfil(p);
+  }).catch(function(){ simpanToken(""); return null; });
 }
 
 function muatPendukung(){
@@ -1038,7 +1180,10 @@ function isiForm(){
     var thnIni = new Date().getFullYear();
     Promise.all(unggah)
       .then(function(hasil){
-        for(var i=0;i<hasil.length;i++) if(hasil[i].error) throw hasil[i].error;
+        for(var i=0;i<hasil.length;i++){
+          if(hasil[i].error) throw hasil[i].error;
+          jalur[SLOT[i].k] = hasil[i].data.path;
+        }
         return sb.from("pengajuan").insert({
           pegawai_id: S.sesi.id, nip: S.sesi.nip, nama: S.sesi.nama,
           pangkat: f.pangkat, golongan: f.golongan, jabatan: f.jabatan, unit: f.unit,
@@ -1261,7 +1406,7 @@ function tungguProfil(id, sisa){
   sisa = (sisa === undefined) ? 6 : sisa;
   return sb.from("profil").select("id,peran").eq("id", id).maybeSingle().then(function(r){
     if(r.data) return r.data;
-    if(sisa <= 0) throw new Error("Profil akun tidak terbentuk. Pastikan supabase.sql sudah dijalankan.");
+    if(sisa <= 0) throw new Error("Profil akun tidak terbentuk. Periksa lembar profil di spreadsheet.");
     return new Promise(function(res){ setTimeout(res, 400); }).then(function(){
       return tungguProfil(id, sisa - 1);
     });
@@ -1487,7 +1632,8 @@ function hapusBerkas(d){
   if(!confirm("Hapus berkas ini beserta lampirannya?")) return;
   sb.from("pengajuan").delete().eq("id", d.id).then(function(r){
     if(r.error) throw r.error;
-    if(d.fotoPath) return sb.storage.from(BUCKET).remove([d.fotoPath]);
+    var semua = [d.fotoPath, d.skPangkatPath, d.skp1Path, d.skp2Path].filter(Boolean);
+    if(semua.length) return sb.storage.from(BUCKET).remove(semua);
   }).then(function(){
     return catat("Hapus berkas", d.nama);
   }).then(muatData).then(function(){
