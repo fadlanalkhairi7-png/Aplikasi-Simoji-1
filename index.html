@@ -610,11 +610,12 @@ function kirimMasuk(){
   var nip = angkaSaja(nilai("m-nip")), sandi = nilai("m-sandi");
   if(!nip || !sandi) return tampilGalat("Isi NIP dan kata sandi.");
 
-  tombol.disabled = true; tombol.textContent = "Memproses…";
+  tombol.disabled = true; tombol.textContent = "Memeriksa akun…";
   sb.auth.signInWithPassword({ email: suratDariNip(nip), password: sandi })
     .then(function(r){
       if(r.error) throw r.error;
-      return muatProfil();
+      if(q("#m-kirim")) q("#m-kirim").textContent = "Memuat data…";
+      return muatProfil(r.data && r.data.user ? r.data.user.id : null);
     })
     .then(function(profil){
       if(!profil) throw new Error("Akun Anda belum punya profil. Hubungi admin.");
@@ -626,7 +627,8 @@ function kirimMasuk(){
       }
       S.sesi = profil;
       S.tab = "beranda";
-      return catat("Masuk", "sebagai " + profil.peran).then(mulaiPanel);
+      catat("Masuk", "sebagai " + profil.peran);   /* tidak ditunggu */
+      return mulaiPanel();
     })
     .catch(function(e){
       tampilGalat(pesanGalat(e));
@@ -667,10 +669,17 @@ function kirimDaftar(){
 /* ============================================================
    Muat data
    ============================================================ */
-function muatProfil(){
-  return sb.auth.getUser().then(function(r){
-    if(!r.data || !r.data.user) return null;
-    return sb.from("profil").select("*").eq("id", r.data.user.id).maybeSingle();
+/* idTahu diisi bila id pengguna sudah didapat dari hasil masuk,
+   supaya tidak perlu satu giliran tambahan ke server. */
+function muatProfil(idTahu){
+  var cariId = idTahu
+    ? Promise.resolve(idTahu)
+    : sb.auth.getUser().then(function(r){
+        return (r.data && r.data.user) ? r.data.user.id : null;
+      });
+  return cariId.then(function(id){
+    if(!id) return null;
+    return sb.from("profil").select("*").eq("id", id).maybeSingle();
   }).then(function(res){
     if(!res || res.error || !res.data) return null;
     return dariProfil(res.data);
@@ -691,7 +700,7 @@ function muatData(){
   var kerja = [ sb.from("pengajuan").select("*").order("dibuat", { ascending:false }) ];
   if(S.sesi.peran === "admin"){
     kerja.push(sb.from("profil").select("*").order("dibuat", { ascending:false }));
-    kerja.push(sb.from("log_aktivitas").select("*").order("ts", { ascending:false }).limit(300));
+    kerja.push(sb.from("log_aktivitas").select("*").order("ts", { ascending:false }).limit(150));
   }
   return Promise.all(kerja).then(function(hasil){
     S.daftar = (hasil[0].data || []).map(dariBaris);
@@ -705,7 +714,7 @@ function muatData(){
 }
 
 function mulaiPanel(){
-  return muatPendukung().then(muatData).then(function(){
+  return Promise.all([ muatPendukung(), muatData() ]).then(function(){
     gambar();
     if(S.sesi.wajibGanti) bukaUbahSandi(true);
   });
@@ -787,16 +796,16 @@ function isiBeranda(){
   var milik = S.daftar;
   var terakhir = milik[0];
   var html = terakhir ? penggaris(terakhir.tmtLama, terakhir.tmtBaru)
-    : '<div class="sj-kosong"><h2>Belum ada pengajuan atas nama Anda</h2>' +
-      '<p>Catat SK berkala terakhir Anda sekali, lalu Simoji menghitung sendiri kapan berkala berikutnya jatuh tempo.</p>' +
-      '<button class="sj-btn sj-btn-utama" id="b-ajukan1">Ajukan sekarang</button></div>';
+    : '<div class="sj-kosong"><h2>Belum ada usulan atas nama Anda</h2>' +
+      '<p>Catat SK berkala terakhir Anda sekali, lalu SIMOJI menghitung sendiri kapan berkala berikutnya jatuh tempo.</p>' +
+      '<button class="sj-btn sj-btn-utama" id="b-ajukan1">Kirim usulan pertama</button></div>';
 
-  html += '<div class="sj-panel-head sj-mt"><h2>Riwayat pengajuan</h2><div class="sj-aksi-kanan">' +
+  html += '<div class="sj-panel-head sj-mt"><h2>Riwayat usulan</h2><div class="sj-aksi-kanan">' +
     '<button class="sj-btn sj-btn-teks" id="b-segar">Muat ulang</button>' +
-    '<button class="sj-btn sj-btn-utama" id="b-ajukan2">Pengajuan baru</button></div></div>';
+    '<button class="sj-btn sj-btn-utama" id="b-ajukan2">Kirim usulan</button></div></div>';
 
   if(!milik.length){
-    html += '<p class="sj-bantuan">Riwayat muncul di sini setelah pengajuan pertama terkirim.</p>';
+    html += '<p class="sj-bantuan">Riwayat muncul di sini setelah usulan pertama terkirim.</p>';
   } else {
     html += '<div class="sj-tabel"><div class="sj-thead sj-row3"><span>Berlaku mulai</span><span>Gaji usulan</span><span>Status</span></div>' +
       milik.map(function(d){
@@ -825,7 +834,7 @@ function isiProfil(){
   q("#isi").innerHTML =
   '<div class="sj-panel"><div class="sj-panel-head"><h2>Profil kepegawaian</h2>' +
     '<span class="sj-row-meta">NIP ' + esc(S.sesi.nip) + '</span></div>' +
-    '<p class="sj-bantuan">Data di sini terisi otomatis setiap kali Anda membuat pengajuan baru.</p>' +
+    '<p class="sj-bantuan">Data di sini terisi otomatis setiap kali Anda mengirim usulan baru.</p>' +
     '<div class="sj-grid2 sj-mt">' +
       '<label class="sj-field"><span>Nama lengkap</span><input id="p-nama" value="' + esc(S.sesi.nama) + '"></label>' +
       '<label class="sj-field"><span>Nomor telepon</span><input id="p-hp" inputmode="numeric" value="' + esc(p.noHp) + '" placeholder="08123456789"></label>' +
@@ -923,7 +932,7 @@ function isiForm(){
     '<label class="sj-field"><span>Catatan untuk kepegawaian</span>' +
       '<textarea id="f-catatan" rows="3" placeholder="Contoh: SK asli sudah diserahkan ke bagian umum pada 2 September."></textarea></label>' +
     '<div id="galat" class="sembunyi"></div>' +
-    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="f-kirim">Kirim pengajuan</button>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="f-kirim">Kirim usulan</button>' +
       '<button class="sj-btn sj-btn-halus" id="f-batal2">Batal</button></div></div>';
 
   function keBeranda(){ S.tab = "beranda"; gambarIsi(); }
@@ -1058,16 +1067,16 @@ function isiForm(){
       })
       .then(function(r){
         if(r.error) throw r.error;
-        return catat("Kirim pengajuan", "TMT " + f.tmtBaru);
+        return catat("Kirim usulan", "TMT " + f.tmtBaru);
       })
       .then(muatData)
       .then(function(){
         S.tab = "beranda";
         gambarIsi();
-        kabar("Pengajuan terkirim dan sudah masuk ke daftar admin.");
+        kabar("Usulan terkirim dan sudah masuk ke daftar admin.");
       })
       .catch(function(e){
-        tombol.disabled = false; tombol.textContent = "Kirim pengajuan";
+        tombol.disabled = false; tombol.textContent = "Kirim usulan";
         tampilGalat(pesanGalat(e));
       });
   });
@@ -1361,7 +1370,7 @@ function nonaktifkanAkun(id){
 function isiLog(){
   var html = '<div class="sj-panel-head"><h2>Log aktivitas</h2>' +
     '<button class="sj-btn sj-btn-teks" id="l-segar">Muat ulang</button></div>' +
-    '<p class="sj-bantuan">Catatan 300 kejadian terakhir: siapa masuk, siapa mengubah status berkas, dan siapa menyentuh akun.</p>';
+    '<p class="sj-bantuan">Catatan 150 kejadian terakhir: siapa masuk, siapa mengubah status berkas, dan siapa menyentuh akun.</p>';
   if(!S.log.length){
     html += '<p class="sj-bantuan">Belum ada aktivitas yang tercatat.</p>';
   } else {
@@ -2112,8 +2121,9 @@ function bukaUbahSandi(wajib){
    Mulai
    ============================================================ */
 sb.auth.getSession().then(function(r){
-  if(r.data && r.data.session) return muatProfil();
-  return null;
+  var sesi = r.data && r.data.session;
+  if(!sesi) return null;
+  return muatProfil(sesi.user ? sesi.user.id : null);
 }).then(function(profil){
   if(profil){
     S.sesi = profil;
