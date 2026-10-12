@@ -185,6 +185,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-slot .sj-drop{padding:14px;}
 .sj-slot .sj-pratinjau img{width:110px;height:82px;}
 .sj-lampiran-satu{margin-bottom:14px;}
+.sj-pdf-ikon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:64px;flex:none;background:#fff;border:1px solid var(--garis);border-radius:2px;font-family:'Archivo Narrow',sans-serif;font-weight:600;font-size:13px;color:var(--rust);letter-spacing:.04em;}
+.sj-lampiran-pdf{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--garis);border-radius:2px;background:#fff;color:var(--biru);text-decoration:none;}
+.sj-lampiran-pdf:hover{background:var(--kertas);}
+.sj-lampiran-pdf span:last-child{text-decoration:underline;text-underline-offset:3px;}
 .sj-lampiran-satu .sj-kv-l{margin-bottom:4px;}
 .sj-rust{color:var(--rust);}
 @media (max-width:900px){ .sj-slots{grid-template-columns:1fr;} }
@@ -441,6 +445,7 @@ function dariBaris(r){
     masaKerja:r.masa_kerja, noSk:r.no_sk, tmtLama:r.tmt_lama, tmtBaru:r.tmt_baru,
     gajiLama:r.gaji_lama, gajiBaru:r.gaji_baru,
     catatan:r.catatan, catatanAdmin:r.catatan_admin, status:r.status,
+    pengantarPath:r.pengantar_path, namaPengantar:r.nama_pengantar,
     fotoPath:r.foto_path, namaFoto:r.nama_foto,
     skPangkatPath:r.sk_pangkat_path, namaSkPangkat:r.nama_sk_pangkat,
     skp1Path:r.skp1_path, namaSkp1:r.nama_skp1, skp1Tahun:r.skp1_tahun,
@@ -890,16 +895,17 @@ function isiForm(){
   S.berkas = {};
   var thn = new Date().getFullYear();
   var SLOT = [
-    { k:"sk",      judul:"SK gaji berkala terakhir",  wajib:true },
+    { k:"pengantar", judul:"Surat pengantar Kasek Kab/Kota atau nota dinas kepala bagian", wajib:true },
+    { k:"sk",      judul:"Surat KGB terakhir / SK KGB terakhir", wajib:true },
     { k:"pangkat", judul:"SK kenaikan pangkat terakhir", wajib:true },
     { k:"skp1",    judul:"SKP tahun " + (thn-1),      wajib:true },
     { k:"skp2",    judul:"SKP tahun " + (thn-2),      wajib:true }
   ];
   function kotakUnggah(s){
     return '<div class="sj-slot" id="slot-' + s.k + '">' +
-      '<input type="file" id="file-' + s.k + '" accept="image/*" hidden>' +
+      '<input type="file" id="file-' + s.k + '" accept="image/*,application/pdf,.pdf" hidden>' +
       '<button class="sj-drop" data-pilih="' + s.k + '"><strong>' + esc(s.judul) + '</strong>' +
-      '<span>Ketuk untuk memilih pindaian, format JPG atau PNG.</span></button></div>';
+      '<span>Ketuk untuk memilih berkas: JPG, PNG, atau PDF.</span></button></div>';
   }
   q("#isi").innerHTML =
   '<div class="sj-panel"><div class="sj-panel-head"><h2>Ajukan kenaikan gaji berkala</h2>' +
@@ -927,8 +933,8 @@ function isiForm(){
     '<p class="sj-bantuan" id="f-hitung"></p>' +
     '<div id="f-otomatis"></div>' +
     '<div class="sj-sub">Lampiran wajib</div>' +
-    '<p class="sj-bantuan">Empat berkas berikut harus dilampirkan seluruhnya. Foto dari kamera HP boleh, asalkan tulisannya terbaca.</p>' +
-    '<div class="sj-slots">' + SLOT.map(kotakUnggah).join("") + '</div>' +
+    '<p class="sj-bantuan">Lima berkas berikut harus dilampirkan seluruhnya. Boleh berupa PDF, boleh juga foto dari kamera HP asalkan tulisannya terbaca.</p>' +
+    '<div class="sj-slots" id="f-slots">' + SLOT.map(kotakUnggah).join("") + '</div>' +
     '<label class="sj-field"><span>Catatan untuk kepegawaian</span>' +
       '<textarea id="f-catatan" rows="3" placeholder="Contoh: SK asli sudah diserahkan ke bagian umum pada 2 September."></textarea></label>' +
     '<div id="galat" class="sembunyi"></div>' +
@@ -962,30 +968,71 @@ function isiForm(){
     q("#f-hitung").textContent = teks.join(" ");
   }
 
-  function pasangSlot(){
-    pasang("[data-pilih]", "click", function(){ q("#file-" + this.dataset.pilih).click(); }, q("#isi"));
-    SLOT.forEach(function(s){
-      var inp = q("#file-" + s.k);
-      if(inp) inp.addEventListener("change", function(){ terimaGambar(s, this.files); });
-    });
+  /* Satu pendengar saja di wadahnya, dipasang sekali.
+     Peristiwa click dan change sama-sama merambat ke atas, jadi
+     kotak yang digambar ulang tetap terlayani tanpa perlu dipasangi
+     ulang. Cara lama memasang berulang dan menumpuk pendengar,
+     sehingga pemilih berkas terbuka berkali-kali lalu diblokir
+     peramban pada kotak ketiga dan keempat. */
+  function cariSlot(k){
+    for(var i=0;i<SLOT.length;i++) if(SLOT[i].k === k) return SLOT[i];
+    return null;
   }
-  pasangSlot();
+
+  var wadahSlot = q("#f-slots");
+  wadahSlot.addEventListener("click", function(e){
+    var tombol = e.target.closest("[data-pilih]");
+    if(!tombol) return;
+    e.preventDefault();
+    var inp = q("#file-" + tombol.dataset.pilih);
+    if(inp) inp.click();
+  });
+  wadahSlot.addEventListener("change", function(e){
+    var inp = e.target;
+    if(!inp || inp.type !== "file") return;
+    var s = cariSlot(String(inp.id).replace("file-", ""));
+    if(s) terimaGambar(s, inp.files);
+  });
+
+  function pasangSlot(){ /* tidak perlu lagi, pendengar sudah terdelegasi */ }
+
+  function pdfKah(file){
+    return file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  }
+
+  function pasangPratinjau(s, nama, gambarUrl){
+    var kotak = gambarUrl
+      ? '<img src="' + gambarUrl + '" alt="Pratinjau ' + esc(s.judul) + '">'
+      : '<span class="sj-pdf-ikon">PDF</span>';
+    q("#slot-" + s.k).innerHTML =
+      '<input type="file" id="file-' + s.k + '" accept="image/*,application/pdf,.pdf" hidden>' +
+      '<div class="sj-pratinjau">' + kotak + '<div>' +
+      '<div class="sj-pratinjau-nama">' + esc(s.judul) + '</div>' +
+      '<div class="sj-row-meta">' + esc(nama) + '</div>' +
+      '<button class="sj-btn sj-btn-teks" data-pilih="' + s.k + '">Ganti berkas</button></div></div>';
+    pasangSlot();
+  }
 
   function terimaGambar(s, files){
     var file = files && files[0];
     if(!file) return;
     tampilGalat("");
-    if(file.type.indexOf("image/") !== 0) return tampilGalat("Lampiran harus berupa gambar (JPG atau PNG).");
+
+    /* PDF dikirim apa adanya, tidak dikompres. */
+    if(pdfKah(file)){
+      if(file.size > 15*1024*1024) return tampilGalat("Ukuran PDF melebihi 15 MB. Perkecil dulu berkasnya.");
+      S.berkas[s.k] = { blob: file, nama: bersihkan(file.name, 80), jenis: "application/pdf", ext: "pdf" };
+      pasangPratinjau(s, S.berkas[s.k].nama, null);
+      return;
+    }
+
+    if(file.type.indexOf("image/") !== 0)
+      return tampilGalat("Lampiran harus berupa gambar JPG, PNG, atau berkas PDF.");
     if(file.size > 12*1024*1024) return tampilGalat("Ukuran gambar melebihi 12 MB.");
+
     kompresGambar(file).then(function(hasil){
-      S.berkas[s.k] = { blob: hasil.blob, nama: bersihkan(file.name, 80) };
-      q("#slot-" + s.k).innerHTML =
-        '<input type="file" id="file-' + s.k + '" accept="image/*" hidden>' +
-        '<div class="sj-pratinjau"><img src="' + hasil.url + '" alt="Pratinjau ' + esc(s.judul) + '"><div>' +
-        '<div class="sj-pratinjau-nama">' + esc(s.judul) + '</div>' +
-        '<div class="sj-row-meta">' + esc(S.berkas[s.k].nama) + '</div>' +
-        '<button class="sj-btn sj-btn-teks" data-pilih="' + s.k + '">Ganti gambar</button></div></div>';
-      pasangSlot();
+      S.berkas[s.k] = { blob: hasil.blob, nama: bersihkan(file.name, 80), jenis: "image/jpeg", ext: "jpg" };
+      pasangPratinjau(s, S.berkas[s.k].nama, hasil.url);
     }).catch(function(err){ tampilGalat(err.message); });
   }
 
@@ -1040,9 +1087,10 @@ function isiForm(){
     var dasar = S.sesi.id + "/" + Date.now() + "-";
     var jalur = {};
     var unggah = SLOT.map(function(s){
-      var nama = dasar + s.k + ".jpg";
+      var b = S.berkas[s.k];
+      var nama = dasar + s.k + "." + (b.ext || "jpg");
       jalur[s.k] = nama;
-      return sb.storage.from(BUCKET).upload(nama, S.berkas[s.k].blob, { contentType:"image/jpeg", upsert:false });
+      return sb.storage.from(BUCKET).upload(nama, b.blob, { contentType: b.jenis || "image/jpeg", upsert:false });
     });
     var thnIni = new Date().getFullYear();
     Promise.all(unggah)
@@ -1059,6 +1107,7 @@ function isiForm(){
           no_sk: f.nosk, tmt_lama: f.tmtLama, tmt_baru: f.tmtBaru,
           gaji_lama: f.gajiLama, gaji_baru: f.gajiBaru,
           catatan: f.catatan, status: "diajukan",
+          pengantar_path: jalur.pengantar, nama_pengantar: S.berkas.pengantar.nama,
           foto_path: jalur.sk,          nama_foto: S.berkas.sk.nama,
           sk_pangkat_path: jalur.pangkat, nama_sk_pangkat: S.berkas.pangkat.nama,
           skp1_path: jalur.skp1, nama_skp1: S.berkas.skp1.nama, skp1_tahun: thnIni-1,
@@ -1432,7 +1481,8 @@ function bukaDetail(id, peran){
   document.addEventListener("keydown", escTutup);
 
   var lampiran = [
-    { jalur:d.fotoPath,       judul:"SK gaji berkala terakhir" },
+    { jalur:d.pengantarPath,  judul:"Surat pengantar Kasek Kab/Kota atau nota dinas kepala bagian" },
+    { jalur:d.fotoPath,       judul:"Surat KGB terakhir / SK KGB terakhir" },
     { jalur:d.skPangkatPath,  judul:"SK kenaikan pangkat terakhir" },
     { jalur:d.skp1Path,       judul:"SKP tahun " + (d.skp1Tahun || "—") },
     { jalur:d.skp2Path,       judul:"SKP tahun " + (d.skp2Tahun || "—") }
@@ -1449,9 +1499,17 @@ function bukaDetail(id, peran){
       wadah.innerHTML = lampiran.map(function(x, i){
         var r = hasil[i];
         if(r.error || !r.data) return '<div class="sj-lampiran-kosong">' + esc(x.judul) + ' tidak bisa dibuka.</div>';
-        return '<div class="sj-lampiran-satu"><div class="sj-kv-l">' + esc(x.judul) + '</div>' +
-          '<button class="sj-lampiran-img" data-besar="' + r.data.signedUrl + '">' +
-          '<img src="' + r.data.signedUrl + '" alt="' + esc(x.judul) + '"></button></div>';
+        var url = r.data.signedUrl;
+        var judul = '<div class="sj-kv-l">' + esc(x.judul) + '</div>';
+        if(/\.pdf(\?|$)/i.test(x.jalur)){
+          return '<div class="sj-lampiran-satu">' + judul +
+            '<a class="sj-lampiran-pdf" href="' + url + '" target="_blank" rel="noopener">' +
+            '<span class="sj-pdf-ikon">PDF</span>' +
+            '<span>Buka berkas PDF di tab baru</span></a></div>';
+        }
+        return '<div class="sj-lampiran-satu">' + judul +
+          '<button class="sj-lampiran-img" data-besar="' + url + '">' +
+          '<img src="' + url + '" alt="' + esc(x.judul) + '"></button></div>';
       }).join("");
       pasang("[data-besar]", "click", function(){
         var url = this.dataset.besar;
@@ -1499,7 +1557,7 @@ function hapusBerkas(d){
   if(!confirm("Hapus berkas ini beserta lampirannya?")) return;
   sb.from("pengajuan").delete().eq("id", d.id).then(function(r){
     if(r.error) throw r.error;
-    var semua = [d.fotoPath, d.skPangkatPath, d.skp1Path, d.skp2Path].filter(Boolean);
+    var semua = [d.pengantarPath, d.fotoPath, d.skPangkatPath, d.skp1Path, d.skp2Path].filter(Boolean);
     if(semua.length) return sb.storage.from(BUCKET).remove(semua);
   }).then(function(){
     return catat("Hapus berkas", d.nama);
