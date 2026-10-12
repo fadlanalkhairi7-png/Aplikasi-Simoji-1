@@ -802,7 +802,7 @@ function isiBeranda(){
   var terakhir = milik[0];
   var html = terakhir ? penggaris(terakhir.tmtLama, terakhir.tmtBaru)
     : '<div class="sj-kosong"><h2>Belum ada usulan atas nama Anda</h2>' +
-      '<p>Catat SK berkala terakhir Anda sekali, lalu SIMOJI menghitung sendiri kapan berkala berikutnya jatuh tempo.</p>' +
+      '<p>Catat surat KGB terakhir Anda sekali, lalu SIMOJI menghitung sendiri kapan berkala berikutnya jatuh tempo.</p>' +
       '<button class="sj-btn sj-btn-utama" id="b-ajukan1">Kirim usulan pertama</button></div>';
 
   html += '<div class="sj-panel-head sj-mt"><h2>Riwayat usulan</h2><div class="sj-aksi-kanan">' +
@@ -924,7 +924,7 @@ function isiForm(){
       '<label class="sj-field"><span>Bulan</span><input id="f-mkb" inputmode="numeric" value="' + esc(p.masaKerjaBulan) + '"></label>' +
     '</div>' +
     '<div class="sj-sub">Data gaji berkala</div><div class="sj-grid2">' +
-      '<label class="sj-field"><span>Nomor SK berkala terakhir</span><input id="f-nosk" placeholder="821.2/145/BKD/2024"></label>' +
+      '<label class="sj-field"><span>Nomor surat KGB terakhir</span><input id="f-nosk" placeholder="821.2/145/BKD/2024"></label>' +
       '<label class="sj-field"><span>TMT berkala terakhir</span><input id="f-tmtlama" type="date"></label>' +
       '<label class="sj-field"><span>TMT berkala berikutnya</span><input id="f-tmtbaru" type="date"></label>' +
       '<label class="sj-field"><span>Gaji pokok saat ini</span><input id="f-gajilama" inputmode="numeric" placeholder="3.203.600"></label>' +
@@ -1455,7 +1455,7 @@ function bukaDetail(id, peran){
     baris("Jabatan", esc(d.jabatan) || "—") +
     baris("Unit kerja", esc(d.unit)) +
     baris("Masa kerja golongan", esc(d.masaKerja)) +
-    baris("Nomor SK terakhir", esc(d.noSk) || "—") +
+    baris("Nomor surat KGB terakhir", esc(d.noSk) || "—") +
     baris("TMT berkala terakhir", tglIndo(d.tmtLama)) +
     baris("TMT berkala berikutnya", tglIndo(d.tmtBaru)) +
     baris("Gaji pokok saat ini", rupiah(d.gajiLama)) +
@@ -2010,7 +2010,7 @@ function cetakNominatif(kol, berkas){
     '<tbody>' + baris + '</tbody>' +
   '</table>' +
   '<p class="catatan">Jumlah pegawai yang diusulkan: ' + berkas.length + ' orang. ' +
-    'Berkas pendukung berupa SK kenaikan gaji berkala terakhir, SK kenaikan pangkat terakhir, ' +
+    'Berkas pendukung berupa surat pengantar, surat KGB terakhir, SK kenaikan pangkat terakhir, ' +
     'dan SKP dua tahun terakhir telah diperiksa dan dinyatakan lengkap.</p>' +
   '<div class="ttd">' +
     '<div>' + esc(ins.kota || "Mataram") + ', ' + tglIndo(kol.tanggal) + '</div>' +
@@ -2075,7 +2075,7 @@ function cetakNota(d){
     '<tr><td class="l">3. Pangkat / golongan ruang</td><td>: ' + esc(d.pangkat) + ' / ' + esc(d.golongan) + '</td></tr>' +
     '<tr><td class="l">4. Jabatan</td><td>: ' + esc(d.jabatan || "-") + '</td></tr>' +
     '<tr><td class="l">5. Unit kerja</td><td>: ' + esc(d.unit) + '</td></tr>' +
-    '<tr><td class="l">6. SK berkala terakhir</td><td>: ' + esc(d.noSk || "-") + ', TMT ' + tglIndo(d.tmtLama) + '</td></tr>' +
+    '<tr><td class="l">6. Surat KGB terakhir</td><td>: ' + esc(d.noSk || "-") + ', TMT ' + tglIndo(d.tmtLama) + '</td></tr>' +
     '<tr><td class="l">7. Gaji pokok lama</td><td>: ' + rupiah(d.gajiLama) + '</td></tr>' +
     '<tr><td class="l">8. Gaji pokok baru</td><td>: ' + rupiah(d.gajiBaru) +
       (selisih > 0 ? ' (naik ' + rupiah(selisih) + ')' : "") + '</td></tr>' +
@@ -2083,7 +2083,7 @@ function cetakNota(d){
     '<tr><td class="l">10. Terhitung mulai tanggal</td><td>: ' + tglIndo(d.tmtBaru) + '</td></tr>' +
     '<tr><td class="l">11. Dasar</td><td>: Peraturan Pemerintah Nomor 5 Tahun 2024</td></tr>' +
   '</table>' +
-  '<p>Berkas pendukung berupa SK kenaikan gaji berkala terakhir, SK kenaikan pangkat terakhir, ' +
+  '<p>Berkas pendukung berupa surat pengantar, surat KGB terakhir, SK kenaikan pangkat terakhir, ' +
   'serta SKP dua tahun terakhir telah diperiksa dan dinyatakan lengkap.</p>' +
   '<p>Demikian usulan ini disampaikan untuk dapat diproses sebagaimana mestinya.</p>' +
   '<div class="ttd">' +
