@@ -1309,43 +1309,85 @@ function isiAkun(){
   pasang("[data-aksi]", "click", function(){
     var id = this.dataset.id;
     if(this.dataset.aksi === "peran") return ubahPeran(id);
-    if(this.dataset.aksi === "reset") return resetSandi(id, this);
+    if(this.dataset.aksi === "reset") return resetSandi(id);
     return nonaktifkanAkun(id);
   }, q("#isi"));
 }
 
 /* Setel ulang sandi orang lain hanya bisa dilakukan di server,
-   lewat Edge Function yang memegang kunci rahasia. */
-function resetSandi(id, tombol){
+   lewat Edge Function yang memegang kunci rahasia. Sandinya
+   diketik admin sendiri; tombol Buatkan tetap disediakan bagi
+   yang tidak mau memikirkannya. Sandi ditampilkan terbaca,
+   bukan bertitik, karena admin memang harus menyampaikannya
+   kepada yang bersangkutan. */
+function resetSandi(id){
   var sasaran = S.akun.filter(function(a){ return a.id === id; })[0];
   if(!sasaran) return;
-  if(!confirm("Setel ulang kata sandi " + sasaran.nama + "? Sandi lamanya langsung tidak berlaku.")) return;
-  var sandi = sandiAcak();
-  tombol.disabled = true;
-  tombol.textContent = "Memproses…";
-  sb.functions.invoke("reset-sandi", { body: { user_id: id, sandi_baru: sandi } })
-    .then(function(r){
-      if(r.error) throw r.error;
-      if(r.data && r.data.error) throw new Error(r.data.error);
-      return sb.from("profil").update({ wajib_ganti: true }).eq("id", id);
-    })
-    .then(function(){ return catat("Setel ulang sandi", sasaran.nama); })
-    .then(function(){
-      alert("Kata sandi " + sasaran.nama + " sekarang:\n\n" + sandi +
-        "\n\nCatat sekarang, pesan ini tidak bisa dibuka lagi. " +
-        "Ia akan diminta menggantinya saat masuk.");
-      kabar("Kata sandi " + sasaran.nama + " disetel ulang.");
-      return muatData();
-    })
-    .then(gambarIsi)
-    .catch(function(e){
-      tombol.disabled = false;
-      tombol.textContent = "Setel ulang sandi";
-      var t = (e && e.message) || "";
-      kabar(/not found|404|Failed to send/i.test(t)
-        ? "Edge Function reset-sandi belum dipasang di Supabase."
-        : pesanGalat(e));
-    });
+
+  lapis.innerHTML =
+  '<div class="sj-tirai" id="tirai"><div class="sj-laci sj-laci-kecil" id="laci">' +
+    '<div class="sj-laci-head"><div><h2>Setel ulang kata sandi</h2>' +
+      '<p class="sj-row-meta">' + esc(sasaran.nama) + ' · ' + esc(sasaran.nip) + '</p></div>' +
+      '<button class="sj-btn sj-btn-teks" data-tutup="1">Tutup</button></div>' +
+    '<p class="sj-info sj-mt">Sandi lamanya langsung tidak berlaku begitu disimpan. ' +
+      'Ia akan diminta menggantinya sendiri saat masuk.</p>' +
+    '<div class="sj-mt">' +
+      '<label class="sj-field"><span>Kata sandi baru</span><span class="sj-gabung">' +
+        '<input id="r-sandi" type="text" placeholder="Huruf dan angka, minimal 8">' +
+        '<button class="sj-btn sj-btn-halus" id="r-acak">Buatkan</button></span>' +
+        '<span class="sj-kekuatan" id="r-kekuatan">' + barKekuatan("") + '</span></label>' +
+    '</div>' +
+    '<p class="sj-bantuan">Catat dulu sandinya sebelum menyimpan, lalu sampaikan langsung ' +
+      'kepada yang bersangkutan.</p>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="r-simpan">Simpan kata sandi</button>' +
+      '<button class="sj-btn sj-btn-halus" data-tutup="1">Batal</button></div>' +
+  '</div></div>';
+
+  q("#laci").addEventListener("click", function(e){ e.stopPropagation(); });
+  q("#tirai").addEventListener("click", tutupLapis);
+  pasang("[data-tutup]", "click", tutupLapis, lapis);
+  document.addEventListener("keydown", escTutup);
+  q("#r-sandi").addEventListener("input", function(){
+    q("#r-kekuatan").innerHTML = barKekuatan(this.value);
+  });
+  q("#r-acak").addEventListener("click", function(){
+    var s = sandiAcak();
+    q("#r-sandi").value = s;
+    q("#r-kekuatan").innerHTML = barKekuatan(s);
+  });
+
+  q("#r-simpan").addEventListener("click", function(){
+    var tombol = this;
+    tampilGalat("");
+    var sandi = nilai("r-sandi").trim();
+    var pesan = periksaSandi(sandi);
+    if(pesan) return tampilGalat(pesan);
+
+    tombol.disabled = true;
+    tombol.textContent = "Menyimpan…";
+    sb.functions.invoke("reset-sandi", { body: { user_id: id, sandi_baru: sandi } })
+      .then(function(r){
+        if(r.error) throw r.error;
+        if(r.data && r.data.error) throw new Error(r.data.error);
+        return sb.from("profil").update({ wajib_ganti: true }).eq("id", id);
+      })
+      .then(function(){ return catat("Setel ulang sandi", sasaran.nama); })
+      .then(muatData)
+      .then(function(){
+        tutupLapis();
+        gambarIsi();
+        kabar("Kata sandi " + sasaran.nama + " disetel ulang.");
+      })
+      .catch(function(e){
+        tombol.disabled = false;
+        tombol.textContent = "Simpan kata sandi";
+        var t = (e && e.message) || "";
+        tampilGalat(/not found|404|Failed to send/i.test(t)
+          ? "Edge Function reset-sandi belum dipasang di Supabase."
+          : pesanGalat(e));
+      });
+  });
 }
 
 /* Baris profil dibuat oleh trigger di basis data sesaat setelah
