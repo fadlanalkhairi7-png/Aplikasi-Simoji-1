@@ -487,8 +487,15 @@ function q(sel, akar){ return (akar||document).querySelector(sel); }
 function qq(sel, akar){ return Array.prototype.slice.call((akar||document).querySelectorAll(sel)); }
 function nilai(id){ var e = q("#"+id); return e ? e.value : ""; }
 function pasang(sel, ev, fn, akar){ qq(sel, akar).forEach(function(e){ e.addEventListener(ev, fn); }); }
+/* Halaman di belakang dan kotak yang sedang terbuka sama-sama punya
+   kotak galat ber-id "galat". querySelector mengambil yang pertama
+   dalam dokumen, yaitu milik halaman, padahal halaman itu tertutup
+   lapisan. Akibatnya pesan galat tertulis di balik tirai dan tombol
+   seolah tidak berbuat apa-apa. Selama lapisan terbuka, kotak galat
+   miliknya yang dipakai. */
 function tampilGalat(pesan){
-  var e = q("#galat");
+  var e = (lapis && lapis.innerHTML) ? q("#galat", lapis) : null;
+  if(!e) e = q("#galat");
   if(!e) return;
   e.textContent = pesan || "";
   e.className = pesan ? "sj-galat" : "sembunyi";
@@ -735,6 +742,24 @@ function keluar(){
   });
 }
 
+/* Memisahkan pengusul dari pemeriksa, tanpa membuat usulan mentok.
+   Kalau ada admin lain, usulan milik admin sendiri tidak boleh ia
+   verifikasi — biar orang kedua yang memeriksanya. Kalau ia satu-
+   satunya admin, tidak ada orang kedua, jadi tombolnya tetap ada
+   supaya berkasnya tidak tertahan selamanya; sebagai gantinya
+   barisnya ditandai dan log mencatat bahwa ia memeriksa usulannya
+   sendiri. Aturannya mengikuti keadaan, bukan disetel sekali. */
+function adaAdminLain(){
+  if(!S.sesi) return false;
+  for(var i=0;i<S.akun.length;i++){
+    if(S.akun[i].peran === "admin" && S.akun[i].id !== S.sesi.id) return true;
+  }
+  return false;
+}
+function usulanSendiri(d){
+  return !!(S.sesi && d && d.pegawaiId === S.sesi.id);
+}
+
 function periksaAdmin(){
   return sb.rpc("ada_admin").then(function(r){
     S.adaAdmin = r.error ? true : !!r.data;
@@ -748,7 +773,8 @@ function gambar(){
   if(!S.sesi) return gambarMasuk();
   var menu = S.sesi.peran === "admin"
     ? [["beranda","Beranda"],["kalender","Kalender KGB"],["pegawai","Data Pegawai"],
-       ["usulan","Usulan"],["akun","Akun pengguna"],["gaji","Tabel gaji"],["log","Log aktivitas"]]
+       ["usulan","Usulan"],["akun","Akun pengguna"],["gaji","Tabel gaji"],["log","Log aktivitas"],
+       ["ajukan","Kirim usulan"],["profil","Profil"]]
     : [["beranda","Beranda"],["ajukan","Kirim usulan"],["profil","Profil"]];
 
   app.innerHTML =
@@ -780,6 +806,12 @@ function gambar(){
 
 function gambarIsi(){
   qq(".sj-navbtn").forEach(function(b){ b.classList.toggle("aktif", b.dataset.tab === S.tab); });
+  /* Admin yang juga ASN mengajukan KGB-nya sendiri lewat dua menu
+     yang sama persis dengan milik pegawai. Aturan di basis data
+     memang sudah mengizinkannya: syarat pengiriman usulan berbunyi
+     pegawai_id = auth.uid(), tanpa menyebut peran. */
+  if(S.tab === "ajukan") return isiForm();
+  if(S.tab === "profil") return isiProfil();
   if(S.sesi.peran === "admin"){
     if(S.tab === "akun")    return isiAkun();
     if(S.tab === "log")     return isiLog();
@@ -789,8 +821,6 @@ function gambarIsi(){
     if(S.tab === "gaji")    return isiGaji();
     return isiPengingat();
   }
-  if(S.tab === "ajukan") return isiForm();
-  if(S.tab === "profil") return isiProfil();
   return isiBeranda();
 }
 
@@ -1180,8 +1210,11 @@ function isiBerkas(){
       tersaring.map(function(x){
         var s = selisihHari(x.tmtBaru);
         var sisa = s === null ? "" : (s >= 0 ? s + " hari lagi" : "terlewat " + Math.abs(s) + " hari");
+        var tanda = usulanSendiri(x)
+          ? ' <span class="sj-badge sj-badge-biru">usulan sendiri</span>' : "";
         return '<button class="sj-trow sj-row5" data-id="' + x.id + '">' +
-          '<span class="sj-td"><strong>' + esc(x.nama) + '</strong><span class="sj-row-meta">' + esc(x.nip) + '</span></span>' +
+          '<span class="sj-td"><strong>' + esc(x.nama) + '</strong>' + tanda +
+            '<span class="sj-row-meta">' + esc(x.nip) + '</span></span>' +
           '<span class="sj-td">' + esc(x.golongan) + '<span class="sj-row-meta">' + esc(x.unit) + '</span></span>' +
           '<span class="sj-td">' + tglSingkat(x.tmtBaru) + '<span class="sj-row-meta' +
             (s !== null && s <= 90 ? " sj-amber" : "") + '">' + sisa + '</span></span>' +
@@ -1463,15 +1496,29 @@ function bukaDetail(id, peran){
     (d.catatan ? baris("Catatan pegawai", esc(d.catatan)) : "") +
     (d.catatanAdmin && peran === "pegawai" ? baris("Catatan kepegawaian", esc(d.catatanAdmin)) : "");
 
+  var sendiri = peran === "admin" && usulanSendiri(d);
+  var terkunci = sendiri && adaAdminLain();
+
   if(peran === "admin"){
-    isi += '<div class="sj-verifikasi"><label class="sj-field"><span>Catatan untuk pegawai</span>' +
-      '<textarea id="d-catatan" rows="2" placeholder="Contoh: lampirkan juga SK pangkat terakhir.">' +
-      esc(d.catatanAdmin||"") + '</textarea></label>' +
-      '<div class="sj-aksi">' +
-        '<button class="sj-btn sj-btn-setuju" data-status="disetujui">Setujui</button>' +
-        '<button class="sj-btn sj-btn-halus" data-status="perbaikan">Minta perbaikan</button>' +
-        '<button class="sj-btn sj-btn-tolak" data-status="ditolak">Tolak</button></div>' +
-      '<button class="sj-btn sj-btn-teks sj-hapus" id="d-hapus">Hapus berkas ini</button></div>';
+    isi += '<div class="sj-verifikasi">';
+    if(terkunci){
+      isi += '<div class="sj-info">Ini usulan atas nama Anda sendiri, jadi tombol verifikasinya ' +
+        'ditiadakan. Mintalah admin lain yang memeriksanya.</div>';
+    } else {
+      if(sendiri){
+        isi += '<div class="sj-info">Ini usulan atas nama Anda sendiri. Karena Anda satu-satunya ' +
+          'admin, pemeriksaannya tetap bisa dilakukan di sini, dan log akan mencatat bahwa Anda ' +
+          'memeriksa usulan Anda sendiri.</div>';
+      }
+      isi += '<label class="sj-field"><span>Catatan untuk pegawai</span>' +
+        '<textarea id="d-catatan" rows="2" placeholder="Contoh: lampirkan juga SK pangkat terakhir.">' +
+        esc(d.catatanAdmin||"") + '</textarea></label>' +
+        '<div class="sj-aksi">' +
+          '<button class="sj-btn sj-btn-setuju" data-status="disetujui">Setujui</button>' +
+          '<button class="sj-btn sj-btn-halus" data-status="perbaikan">Minta perbaikan</button>' +
+          '<button class="sj-btn sj-btn-tolak" data-status="ditolak">Tolak</button></div>';
+    }
+    isi += '<button class="sj-btn sj-btn-teks sj-hapus" id="d-hapus">Hapus berkas ini</button></div>';
   }
 
   lapis.innerHTML = '<div class="sj-tirai" id="tirai"><div class="sj-laci" id="laci">' + isi + '</div></div>';
@@ -1526,7 +1573,8 @@ function bukaDetail(id, peran){
 
   if(peran === "admin"){
     pasang("[data-status]", "click", function(){
-      ubahStatus(d.id, this.dataset.status, bersihkan(q("#d-catatan").value, 300));
+      var kotak = q("#d-catatan");
+      ubahStatus(d.id, this.dataset.status, kotak ? bersihkan(kotak.value, 300) : "", sendiri);
     }, lapis);
     q("#d-hapus").addEventListener("click", function(){ hapusBerkas(d); });
   }
@@ -1538,12 +1586,13 @@ function tutupLapis(){
   document.removeEventListener("keydown", escTutup);
 }
 
-function ubahStatus(id, status, catatanAdmin){
+function ubahStatus(id, status, catatanAdmin, sendiri){
   var sasaran = S.daftar.filter(function(x){ return x.id === id; })[0];
   sb.from("pengajuan").update({ status: status, catatan_admin: catatanAdmin }).eq("id", id)
     .then(function(r){
       if(r.error) throw r.error;
-      return catat("Ubah status berkas", (sasaran ? sasaran.nama : "") + " → " + STATUS[status].label);
+      return catat("Ubah status berkas", (sasaran ? sasaran.nama : "") + " → " + STATUS[status].label +
+        (sendiri ? " (usulan sendiri)" : ""));
     })
     .then(muatData)
     .then(function(){
