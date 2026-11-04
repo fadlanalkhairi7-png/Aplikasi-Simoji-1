@@ -381,6 +381,21 @@ function pesanGalat(e){
 function pdfKah(file){
   return file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
 }
+function docKah(file){
+  return /\.(doc|docx)$/i.test(file.name || "") ||
+    file.type === "application/msword" ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+}
+/* Jenis berkas ditentukan dari akhiran namanya, bukan dari tipe
+   yang dilaporkan peramban: tipe itu sering kosong di Android.
+   Hanya gambar yang bisa ditampilkan langsung; sisanya dibuka
+   lewat tautan, karena peramban tidak bisa menggambar isi Word. */
+function jenisBerkas(jalur){
+  if(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(jalur)) return "gambar";
+  if(/\.pdf(\?|$)/i.test(jalur)) return "pdf";
+  if(/\.(doc|docx)(\?|$)/i.test(jalur)) return "doc";
+  return "lain";
+}
 function kompresGambar(file, maxDim, mutu){
   maxDim = maxDim || 1200; mutu = mutu || 0.7;
   return new Promise(function(resolve, reject){
@@ -1557,13 +1572,16 @@ function bukaDetail(id, peran){
         'Berkasnya ada di daftar lampiran di atas, paling akhir.</p>';
     } else if(peran === "admin"){
       isi += '<p class="sj-bantuan">Setelah SK-nya terbit, unggah di sini. ' +
+        'Boleh gambar JPG atau PNG, berkas PDF, atau dokumen Word. ' +
         'Pegawai yang bersangkutan bisa langsung membukanya sendiri.</p>';
     } else {
       isi += '<p class="sj-bantuan">SK-nya belum diunggah kepegawaian. ' +
         'Begitu diunggah, berkasnya muncul di sini dan bisa Anda buka sendiri.</p>';
     }
     if(peran === "admin"){
-      isi += '<input type="file" id="d-file-sk" accept="image/*,application/pdf,.pdf" hidden>' +
+      isi += '<input type="file" id="d-file-sk" ' +
+        'accept="image/*,application/pdf,.pdf,.doc,.docx,application/msword,' +
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>' +
         '<button class="sj-btn sj-btn-halus" id="d-unggah-sk">' +
         (d.skHasilPath ? "Ganti berkas SK" : "Unggah SK terbit") + '</button>';
     }
@@ -1620,15 +1638,22 @@ function bukaDetail(id, peran){
         if(r.error || !r.data) return '<div class="sj-lampiran-kosong">' + esc(x.judul) + ' tidak bisa dibuka.</div>';
         var url = r.data.signedUrl;
         var judul = '<div class="sj-kv-l">' + esc(x.judul) + '</div>';
-        if(/\.pdf(\?|$)/i.test(x.jalur)){
+        var jenis = jenisBerkas(x.jalur);
+        if(jenis === "gambar"){
           return '<div class="sj-lampiran-satu">' + judul +
-            '<a class="sj-lampiran-pdf" href="' + url + '" target="_blank" rel="noopener">' +
-            '<span class="sj-pdf-ikon">PDF</span>' +
-            '<span>Buka berkas PDF di tab baru</span></a></div>';
+            '<button class="sj-lampiran-img" data-besar="' + url + '">' +
+            '<img src="' + url + '" alt="' + esc(x.judul) + '"></button></div>';
         }
+        var ikon = jenis === "pdf" ? "PDF" : (jenis === "doc" ? "DOC" : "FILE");
+        var ajakan = jenis === "pdf"
+          ? "Buka berkas PDF di tab baru"
+          : (jenis === "doc"
+              ? "Unduh berkas Word, lalu buka dengan aplikasi dokumen"
+              : "Unduh berkas ini");
         return '<div class="sj-lampiran-satu">' + judul +
-          '<button class="sj-lampiran-img" data-besar="' + url + '">' +
-          '<img src="' + url + '" alt="' + esc(x.judul) + '"></button></div>';
+          '<a class="sj-lampiran-pdf" href="' + url + '" target="_blank" rel="noopener">' +
+          '<span class="sj-pdf-ikon">' + ikon + '</span>' +
+          '<span>' + ajakan + '</span></a></div>';
       }).join("");
       pasang("[data-besar]", "click", function(){
         var url = this.dataset.besar;
@@ -1665,21 +1690,37 @@ function bukaDetail(id, peran){
    berbunyi "map harus milik sendiri", jadi kalau ditaruh di map
    admin, pegawai tidak akan pernah bisa membukanya. */
 function unggahSkHasil(d, file, tombol){
-  var besar = pdfKah(file) ? 15 : 12;
+  var gambar = file.type.indexOf("image/") === 0;
+  var besar = gambar ? 12 : 15;
   if(file.size > besar*1024*1024)
     return kabar("Ukuran berkas melebihi " + besar + " MB. Perkecil dulu.");
-  if(!pdfKah(file) && file.type.indexOf("image/") !== 0)
-    return kabar("SK harus berupa gambar JPG, PNG, atau berkas PDF.");
+  if(!gambar && !pdfKah(file) && !docKah(file))
+    return kabar("SK harus berupa gambar JPG atau PNG, berkas PDF, atau dokumen Word.");
 
   var teksAwal = tombol.textContent;
   tombol.disabled = true;
   tombol.textContent = "Mengunggah…";
 
-  var siap = pdfKah(file)
-    ? Promise.resolve({ blob: file, jenis: "application/pdf", ext: "pdf" })
-    : kompresGambar(file).then(function(h){
-        return { blob: h.blob, jenis: "image/jpeg", ext: "jpg" };
-      });
+  /* Hanya gambar yang dikecilkan. PDF dan Word dikirim apa adanya,
+     karena mengubahnya berarti merusak isinya. */
+  var siap;
+  if(gambar){
+    siap = kompresGambar(file).then(function(h){
+      return { blob: h.blob, jenis: "image/jpeg", ext: "jpg" };
+    });
+  } else if(pdfKah(file)){
+    siap = Promise.resolve({ blob: file, jenis: "application/pdf", ext: "pdf" });
+  } else {
+    var docx = /\.docx$/i.test(file.name || "") ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    siap = Promise.resolve({
+      blob: file,
+      jenis: docx
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : "application/msword",
+      ext: docx ? "docx" : "doc"
+    });
+  }
 
   siap.then(function(b){
     var nama = d.pegawaiId + "/" + Date.now() + "-sk-terbit." + b.ext;
