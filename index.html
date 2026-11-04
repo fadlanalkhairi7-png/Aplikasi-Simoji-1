@@ -226,6 +226,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sj-kv-l{font-family:'Archivo Narrow',sans-serif;font-size:14px;color:var(--tinta-lembut);}
 .sj-kv-v{font-size:15px;}
 .sj-verifikasi{margin-top:22px;padding-top:18px;border-top:2px solid var(--oranye);}
+.sj-sk-hasil{margin-top:22px;padding:16px 18px;border:1px solid var(--garis);border-left:4px solid var(--hijau);background:#fff;}
+.sj-sk-hasil .sj-sub{margin-top:0;}
 .sj-zoom{position:fixed;inset:0;background:rgba(92,20,12,.93);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50;cursor:zoom-out;}
 .sj-zoom img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;}
 
@@ -376,6 +378,9 @@ function pesanGalat(e){
 }
 
 /* ---------- gambar ---------- */
+function pdfKah(file){
+  return file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+}
 function kompresGambar(file, maxDim, mutu){
   maxDim = maxDim || 1200; mutu = mutu || 0.7;
   return new Promise(function(resolve, reject){
@@ -450,6 +455,8 @@ function dariBaris(r){
     skPangkatPath:r.sk_pangkat_path, namaSkPangkat:r.nama_sk_pangkat,
     skp1Path:r.skp1_path, namaSkp1:r.nama_skp1, skp1Tahun:r.skp1_tahun,
     skp2Path:r.skp2_path, namaSkp2:r.nama_skp2, skp2Tahun:r.skp2_tahun,
+    skHasilPath:r.sk_hasil_path, namaSkHasil:r.nama_sk_hasil,
+    skHasilWaktu:r.sk_hasil_waktu ? new Date(r.sk_hasil_waktu).getTime() : 0,
     noNota:r.no_nota, mkgTahun:r.mkg_tahun, mkgBulan:r.mkg_bulan, kolektifId:r.kolektif_id,
     dibuat:new Date(r.dibuat).getTime(), diperbarui:new Date(r.diperbarui).getTime()
   };
@@ -849,7 +856,9 @@ function isiBeranda(){
             esc(d.pangkat) + ' · ' + esc(d.golongan) + ' · ' + esc(d.unit) + '</span></span>' +
           '<span class="sj-td sj-td-num">' + rupiah(d.gajiBaru || d.gajiLama) +
             '<span class="sj-row-meta">dikirim ' + waktuRelatif(d.dibuat) + '</span></span>' +
-          '<span class="sj-td sj-td-status">' + lencana(d.status) + '</span></button>';
+          '<span class="sj-td sj-td-status">' + lencana(d.status) +
+            (d.skHasilPath ? ' <span class="sj-badge sj-badge-hijau">SK sudah terbit</span>' : "") +
+          '</span></button>';
       }).join("") + '</div>';
   }
 
@@ -1025,10 +1034,6 @@ function isiForm(){
   });
 
   function pasangSlot(){ /* tidak perlu lagi, pendengar sudah terdelegasi */ }
-
-  function pdfKah(file){
-    return file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
-  }
 
   function pasangPratinjau(s, nama, gambarUrl){
     var kotak = gambarUrl
@@ -1541,6 +1546,30 @@ function bukaDetail(id, peran){
   var sendiri = peran === "admin" && usulanSendiri(d);
   var terkunci = sendiri && adaAdminLain();
 
+  /* SK yang sudah terbit. Baru masuk akal setelah usulannya
+     disetujui atau diteruskan ke provinsi, jadi di luar dua
+     status itu bagiannya tidak ditampilkan sama sekali. */
+  var tahapSk = d.status === "disetujui" || d.status === "dikirim";
+  if(tahapSk || d.skHasilPath){
+    isi += '<div class="sj-sk-hasil"><div class="sj-sub">SK kenaikan gaji berkala yang terbit</div>';
+    if(d.skHasilPath){
+      isi += '<p class="sj-info">Diunggah ' + jamTanggal(d.skHasilWaktu) + '. ' +
+        'Berkasnya ada di daftar lampiran di atas, paling akhir.</p>';
+    } else if(peran === "admin"){
+      isi += '<p class="sj-bantuan">Setelah SK-nya terbit, unggah di sini. ' +
+        'Pegawai yang bersangkutan bisa langsung membukanya sendiri.</p>';
+    } else {
+      isi += '<p class="sj-bantuan">SK-nya belum diunggah kepegawaian. ' +
+        'Begitu diunggah, berkasnya muncul di sini dan bisa Anda buka sendiri.</p>';
+    }
+    if(peran === "admin"){
+      isi += '<input type="file" id="d-file-sk" accept="image/*,application/pdf,.pdf" hidden>' +
+        '<button class="sj-btn sj-btn-halus" id="d-unggah-sk">' +
+        (d.skHasilPath ? "Ganti berkas SK" : "Unggah SK terbit") + '</button>';
+    }
+    isi += '</div>';
+  }
+
   if(peran === "admin"){
     isi += '<div class="sj-verifikasi">';
     if(terkunci){
@@ -1574,7 +1603,8 @@ function bukaDetail(id, peran){
     { jalur:d.fotoPath,       judul:"Surat KGB terakhir / SK KGB terakhir" },
     { jalur:d.skPangkatPath,  judul:"SK kenaikan pangkat terakhir" },
     { jalur:d.skp1Path,       judul:"SKP tahun " + (d.skp1Tahun || "—") },
-    { jalur:d.skp2Path,       judul:"SKP tahun " + (d.skp2Tahun || "—") }
+    { jalur:d.skp2Path,       judul:"SKP tahun " + (d.skp2Tahun || "—") },
+    { jalur:d.skHasilPath,    judul:"SK kenaikan gaji berkala yang terbit" }
   ].filter(function(x){ return !!x.jalur; });
 
   if(!lampiran.length){
@@ -1619,7 +1649,66 @@ function bukaDetail(id, peran){
       ubahStatus(d.id, this.dataset.status, kotak ? bersihkan(kotak.value, 300) : "", sendiri);
     }, lapis);
     q("#d-hapus").addEventListener("click", function(){ hapusBerkas(d); });
+
+    var tombolSk = q("#d-unggah-sk", lapis), inpSk = q("#d-file-sk", lapis);
+    if(tombolSk && inpSk){
+      tombolSk.addEventListener("click", function(e){ e.preventDefault(); inpSk.click(); });
+      inpSk.addEventListener("change", function(){
+        if(this.files && this.files[0]) unggahSkHasil(d, this.files[0], tombolSk);
+      });
+    }
   }
+}
+
+/* SK yang sudah terbit diunggah admin, tetapi disimpan di map
+   milik pegawai — bukan map admin. Aturan membaca di Supabase
+   berbunyi "map harus milik sendiri", jadi kalau ditaruh di map
+   admin, pegawai tidak akan pernah bisa membukanya. */
+function unggahSkHasil(d, file, tombol){
+  var besar = pdfKah(file) ? 15 : 12;
+  if(file.size > besar*1024*1024)
+    return kabar("Ukuran berkas melebihi " + besar + " MB. Perkecil dulu.");
+  if(!pdfKah(file) && file.type.indexOf("image/") !== 0)
+    return kabar("SK harus berupa gambar JPG, PNG, atau berkas PDF.");
+
+  var teksAwal = tombol.textContent;
+  tombol.disabled = true;
+  tombol.textContent = "Mengunggah…";
+
+  var siap = pdfKah(file)
+    ? Promise.resolve({ blob: file, jenis: "application/pdf", ext: "pdf" })
+    : kompresGambar(file).then(function(h){
+        return { blob: h.blob, jenis: "image/jpeg", ext: "jpg" };
+      });
+
+  siap.then(function(b){
+    var nama = d.pegawaiId + "/" + Date.now() + "-sk-terbit." + b.ext;
+    return sb.storage.from(BUCKET).upload(nama, b.blob, { contentType: b.jenis, upsert:false })
+      .then(function(r){
+        if(r.error) throw r.error;
+        var jalur = (r.data && r.data.path) || nama;
+        return sb.from("pengajuan").update({
+          sk_hasil_path: jalur,
+          nama_sk_hasil: bersihkan(file.name, 80),
+          sk_hasil_waktu: new Date().toISOString()
+        }).eq("id", d.id);
+      });
+  })
+  .then(function(r){
+    if(r && r.error) throw r.error;
+    return catat("Unggah SK terbit", d.nama);
+  })
+  .then(muatData)
+  .then(function(){
+    tutupLapis();
+    gambarIsi();
+    kabar("SK untuk " + d.nama + " sudah diunggah dan bisa dibuka olehnya.");
+  })
+  .catch(function(e){
+    tombol.disabled = false;
+    tombol.textContent = teksAwal;
+    kabar(pesanGalat(e));
+  });
 }
 
 function escTutup(e){ if(e.key === "Escape") tutupLapis(); }
@@ -1648,7 +1737,7 @@ function hapusBerkas(d){
   if(!confirm("Hapus berkas ini beserta lampirannya?")) return;
   sb.from("pengajuan").delete().eq("id", d.id).then(function(r){
     if(r.error) throw r.error;
-    var semua = [d.pengantarPath, d.fotoPath, d.skPangkatPath, d.skp1Path, d.skp2Path].filter(Boolean);
+    var semua = [d.pengantarPath, d.fotoPath, d.skPangkatPath, d.skp1Path, d.skp2Path, d.skHasilPath].filter(Boolean);
     if(semua.length) return sb.storage.from(BUCKET).remove(semua);
   }).then(function(){
     return catat("Hapus berkas", d.nama);
