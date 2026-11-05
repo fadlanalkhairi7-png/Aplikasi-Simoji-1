@@ -2499,8 +2499,8 @@ function cetakNota(d){
   var isi =
   '<div class="alat">' +
     '<button onclick="window.print()">Cetak</button>' +
-    '<span>Seluruh isi nota ini bisa diklik dan disunting dulu sebelum dicetak. ' +
-    'Bagian bertitik perlu Anda isi sendiri.</span>' +
+    '<span>Seluruh isi nota bisa diklik dan disunting dulu sebelum dicetak. ' +
+    'Pada kotak cetak, matikan <b>Header dan footer</b> supaya muat satu halaman.</span>' +
   '</div>' +
   '<div class="lembar" contenteditable="true">' +
     '<table class="kepala"><tr>' +
@@ -2572,34 +2572,39 @@ function cetakNota(d){
   '</div>';
 
   var gaya = '<style>' +
-    '@page{size:A4;margin:2cm 2cm 2cm 3cm;}' +
-    'body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.45;color:#000;margin:0;}' +
-    '.lembar{outline:none;}' +
-    '.kepala{width:100%;border-collapse:collapse;margin-bottom:18px;}' +
+    /* Seluruh nota harus muat satu lembar. Angka di bawah sudah
+       dipadatkan sampai pas, jadi menaikkan salah satunya akan
+       mendorong tanda tangan dan tembusan ke halaman kedua. */
+    '@page{size:A4;margin:1.5cm 2cm 1.2cm 2.5cm;}' +
+    'body{font-family:"Times New Roman",serif;font-size:11pt;line-height:1.25;color:#000;margin:0;}' +
+    '.lembar{outline:none;page-break-inside:avoid;}' +
+    '.kepala{width:100%;border-collapse:collapse;margin-bottom:10px;}' +
     '.kepala td{vertical-align:top;padding:0;}' +
     '.kepala .kanan{text-align:right;white-space:nowrap;}' +
-    '.tujuan{margin-bottom:16px;}' +
+    '.tujuan{margin-bottom:9px;}' +
     '.tebal{font-weight:bold;}' +
     '.menjorok{margin-left:28px;}' +
-    '.pembuka{margin:0 0 10px;text-align:justify;}' +
-    '.judul-bagian{font-weight:bold;text-decoration:underline;margin:14px 0 6px;}' +
-    '.rinci{width:100%;border-collapse:collapse;margin:0 0 6px;}' +
-    '.rinci td{vertical-align:top;padding:2px 0;}' +
+    '.pembuka{margin:0 0 7px;text-align:justify;}' +
+    '.judul-bagian{font-weight:bold;text-decoration:underline;margin:9px 0 3px;}' +
+    '.rinci{width:100%;border-collapse:collapse;margin:0 0 4px;}' +
+    '.rinci td{vertical-align:top;padding:1px 0;}' +
     '.rinci .no{width:26px;}' +
     '.rinci .l{width:44%;}' +
     '.rinci .t{width:14px;}' +
-    '.penutup{margin:16px 0 0;text-align:justify;}' +
-    '.ttd{margin-top:26px;width:46%;margin-left:54%;text-align:center;}' +
-    '.ruang{height:78px;}' +
-    '.tembusan{margin-top:26px;font-size:11pt;}' +
-    '.tembusan ol{margin:4px 0 0 18px;padding:0;}' +
+    '.penutup{margin:10px 0 0;text-align:justify;}' +
+    '.ttd{margin-top:14px;width:46%;margin-left:54%;text-align:center;}' +
+    '.ruang{height:54px;}' +
+    '.tembusan{margin-top:14px;font-size:10pt;line-height:1.2;}' +
+    '.tembusan ol{margin:2px 0 0 18px;padding:0;}' +
     '.alat{position:sticky;top:0;background:#8C1A10;color:#fff;padding:10px 14px;' +
       'font-family:Arial,sans-serif;font-size:13px;display:flex;gap:14px;align-items:center;}' +
     '.alat button{font:inherit;font-weight:bold;padding:6px 16px;border:0;border-radius:2px;' +
       'background:#fff;color:#8C1A10;cursor:pointer;}' +
-    '@media screen{.lembar{max-width:21cm;margin:18px auto;padding:2cm;background:#fff;' +
-      'box-shadow:0 1px 6px rgba(0,0,0,.2);}body{background:#eee;}}' +
-    '@media print{.alat{display:none;}.lembar{margin:0;padding:0;box-shadow:none;max-width:none;}}' +
+    '@media screen{.lembar{width:21cm;min-height:29.7cm;box-sizing:border-box;margin:18px auto;' +
+      'padding:1.5cm 2cm 1.2cm 2.5cm;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2);}' +
+      'body{background:#eee;}}' +
+    '@media print{.alat{display:none;}.lembar{margin:0;padding:0;box-shadow:none;' +
+      'width:auto;min-height:0;}}' +
   '</style>';
 
   var jendela = window.open("", "_blank");
