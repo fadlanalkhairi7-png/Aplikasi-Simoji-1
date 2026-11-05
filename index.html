@@ -432,14 +432,24 @@ var STATUS = {
   dikirim:{label:"Diusulkan ke provinsi",warna:"kirim"}
 };
 var GOLONGAN = ["I/a","I/b","I/c","I/d","II/a","II/b","II/c","II/d","III/a","III/b","III/c","III/d","IV/a","IV/b","IV/c","IV/d","IV/e"];
+/* PPPK memakai angka romawi tanpa ruang, I sampai XVII.
+   Dasarnya Perpres Nomor 11 Tahun 2024. */
+var GOLONGAN_PPPK = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII"];
+var STATUS_PEGAWAI = ["PNS","PPPK"];
+function golonganUntuk(status){
+  return status === "PPPK" ? GOLONGAN_PPPK : GOLONGAN;
+}
 var AMBANG_INGAT = 90;   // hari sebelum jatuh tempo mulai diingatkan
 
 /* Cari gaji pokok dari tabel yang dimuat dari Supabase.
    Mengembalikan null bila golongan itu belum ada isinya. */
-function cariGaji(golongan, mkgTahun){
+function cariGaji(golongan, mkgTahun, status){
+  status = status || "PNS";
   var cocok = null;
   for(var i=0;i<S.gaji.length;i++){
     var b = S.gaji[i];
+    /* baris lama belum punya kolom status; anggap PNS */
+    if((b.status || "PNS") !== status) continue;
     if(b.golongan === golongan && b.mkg_min <= mkgTahun){
       if(!cocok || b.mkg_min > cocok.mkg_min) cocok = b;
     }
@@ -465,6 +475,7 @@ function dariBaris(r){
     masaKerja:r.masa_kerja, noSk:r.no_sk, tmtLama:r.tmt_lama, tmtBaru:r.tmt_baru,
     gajiLama:r.gaji_lama, gajiBaru:r.gaji_baru,
     catatan:r.catatan, catatanAdmin:r.catatan_admin, status:r.status,
+    statusPegawai:r.status_pegawai || "PNS",
     pengantarPath:r.pengantar_path, namaPengantar:r.nama_pengantar,
     fotoPath:r.foto_path, namaFoto:r.nama_foto,
     skPangkatPath:r.sk_pangkat_path, namaSkPangkat:r.nama_sk_pangkat,
@@ -479,6 +490,7 @@ function dariBaris(r){
 function dariProfil(p){
   return {
     id:p.id, nip:p.nip, nama:p.nama, peran:p.peran,
+    statusPegawai:p.status_pegawai || "PNS",
     wajibGanti:!!p.wajib_ganti, dibuat:new Date(p.dibuat).getTime(),
     profil:{
       pangkat:p.pangkat||"", golongan:p.golongan||"III/a", jabatan:p.jabatan||"",
@@ -499,7 +511,7 @@ function catat(aksi, rincian){
 var S = {
   sesi:null, daftar:[], akun:[], log:[],
   tab:"beranda", mode:"masuk", peranPilih:"pegawai", adaAdmin:null,
-  saring:"semua", cari:"", gaji:[], instansi:{}, tahun:new Date().getFullYear(), kolektif:[],
+  saring:"semua", cari:"", cariAkun:"", statusGaji:"PNS", gaji:[], instansi:{}, tahun:new Date().getFullYear(), kolektif:[],
   berkas:{}   // lampiran yang sedang disiapkan di formulir
 };
 var app = document.getElementById("app");
@@ -541,9 +553,15 @@ function lencana(status){
 function baris(label, isi){
   return '<div class="sj-kv"><span class="sj-kv-l">' + esc(label) + '</span><span class="sj-kv-v">' + isi + '</span></div>';
 }
-function pilihanGolongan(t){
-  return GOLONGAN.map(function(g){
+function pilihanGolongan(t, status){
+  return golonganUntuk(status).map(function(g){
     return '<option value="' + g + '"' + (g === t ? " selected" : "") + '>' + g + '</option>';
+  }).join("");
+}
+function pilihanStatus(t){
+  return STATUS_PEGAWAI.map(function(s){
+    return '<option value="' + s + '"' + (s === t ? " selected" : "") + '>' +
+      (s === "PNS" ? "PNS" : "PPPK / P3K") + '</option>';
   }).join("");
 }
 function penggaris(tmtLama, tmtBaru){
@@ -612,6 +630,8 @@ function gambarMasuk(){
       '</div>') +
       '<div class="sj-form">' +
         (daftarMode ? '<label class="sj-field"><span>Nama lengkap</span><input id="m-nama" placeholder="Siti Rahmawati, S.Pd."></label>' : "") +
+        (daftarMode ? '<label class="sj-field"><span>Status kepegawaian</span><select id="m-status">' +
+          pilihanStatus(S.statusPilih || "PNS") + '</select></label>' : "") +
         '<label class="sj-field"><span>NIP</span><input id="m-nip" inputmode="numeric" autocomplete="username" placeholder="198703142010012001"></label>' +
         '<label class="sj-field"><span>Kata sandi</span>' +
           '<input id="m-sandi" type="password" autocomplete="' + (daftarMode ? "new-password" : "current-password") + '" placeholder="' +
@@ -688,7 +708,13 @@ function kirimDaftar(){
   }).then(function(r){
     if(r.error) throw r.error;
     if(!r.data.session) throw new Error("Akun dibuat tapi belum bisa masuk. Matikan Confirm email di Supabase, lalu coba masuk.");
-    return muatProfil();
+    /* Status kepegawaian disimpan setelah profil terbentuk oleh
+       pemicu di basis data. Gagal di sini tidak membatalkan
+       pendaftaran — statusnya tinggal diperbaiki lewat Profil. */
+    var st = nilai("m-status") || "PNS";
+    return sb.from("profil").update({ status_pegawai: st })
+      .eq("id", r.data.user.id).then(function(){}, function(){})
+      .then(muatProfil);
   }).then(function(profil){
     if(!profil) throw new Error("Profil gagal dibuat. Pastikan skema SQL sudah dijalankan.");
     S.sesi = profil;
@@ -897,8 +923,11 @@ function isiProfil(){
     '<div class="sj-grid2 sj-mt">' +
       '<label class="sj-field"><span>Nama lengkap</span><input id="p-nama" value="' + esc(S.sesi.nama) + '"></label>' +
       '<label class="sj-field"><span>Nomor telepon</span><input id="p-hp" inputmode="numeric" value="' + esc(p.noHp) + '" placeholder="08123456789"></label>' +
+      '<label class="sj-field"><span>Status kepegawaian</span><select id="p-status">' +
+        pilihanStatus(S.sesi.statusPegawai) + '</select></label>' +
       '<label class="sj-field"><span>Pangkat</span><input id="p-pangkat" value="' + esc(p.pangkat) + '" placeholder="Penata Muda Tingkat I"></label>' +
-      '<label class="sj-field"><span>Golongan ruang</span><select id="p-golongan">' + pilihanGolongan(p.golongan) + '</select></label>' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="p-golongan">' +
+        pilihanGolongan(p.golongan, S.sesi.statusPegawai) + '</select></label>' +
       '<label class="sj-field"><span>Jabatan</span><input id="p-jabatan" value="' + esc(p.jabatan) + '" placeholder="Guru Ahli Pertama"></label>' +
       '<label class="sj-field"><span>Unit kerja</span><input id="p-unit" value="' + esc(p.unit) + '" placeholder="SMPN 3 Medan"></label>' +
       '<label class="sj-field"><span>Satuan kerja induk</span><input id="p-satker" value="' + esc(p.satker) + '" placeholder="Dinas Pendidikan Kota Medan"></label>' +
@@ -909,6 +938,12 @@ function isiProfil(){
     '<div id="galat" class="sembunyi"></div>' +
     '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="p-simpan">Simpan profil</button></div></div>';
 
+  /* Daftar golongan PNS dan PPPK berbeda sama sekali, jadi
+     pilihannya digambar ulang begitu statusnya diganti. */
+  q("#p-status").addEventListener("change", function(){
+    q("#p-golongan").innerHTML = pilihanGolongan(null, this.value);
+  });
+
   q("#p-simpan").addEventListener("click", function(){
     var tombol = this;
     var nama = bersihkan(nilai("p-nama"));
@@ -916,6 +951,7 @@ function isiProfil(){
     var isi = {
       nama: nama,
       no_hp: angkaSaja(nilai("p-hp")).slice(0,15),
+      status_pegawai: nilai("p-status"),
       pangkat: bersihkan(nilai("p-pangkat")),
       golongan: nilai("p-golongan"),
       jabatan: bersihkan(nilai("p-jabatan")),
@@ -969,7 +1005,10 @@ function isiForm(){
       : '<p class="sj-bantuan">Isi menu Profil sekali saja supaya bagian ini terisi sendiri pada pengajuan berikutnya.</p>') +
     '<div class="sj-grid2 sj-mt">' +
       '<label class="sj-field"><span>Pangkat</span><input id="f-pangkat" value="' + esc(p.pangkat) + '" placeholder="Penata Muda Tingkat I"></label>' +
-      '<label class="sj-field"><span>Golongan ruang</span><select id="f-golongan">' + pilihanGolongan(p.golongan) + '</select></label>' +
+      '<label class="sj-field"><span>Status kepegawaian</span><select id="f-status">' +
+        pilihanStatus(S.sesi.statusPegawai) + '</select></label>' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="f-golongan">' +
+        pilihanGolongan(p.golongan, S.sesi.statusPegawai) + '</select></label>' +
       '<label class="sj-field"><span>Jabatan</span><input id="f-jabatan" value="' + esc(p.jabatan) + '" placeholder="Guru Ahli Pertama"></label>' +
       '<label class="sj-field"><span>Unit kerja</span><input id="f-unit" value="' + esc(p.unit) + '" placeholder="SMPN 3 Medan"></label>' +
     '</div>' +
@@ -1088,24 +1127,31 @@ function isiForm(){
 
   /* usulan gaji terisi sendiri dari tabel PP */
   function isiOtomatis(){
+    var status = nilai("f-status") || "PNS";
     var gol = nilai("f-golongan"), tmtLama = nilai("f-tmtlama"), tmtBaru = nilai("f-tmtbaru");
     var mkgSekarang = mkgPada(nilai("f-mkt"), nilai("f-mkb"), tmtLama, tmtLama);
     var mkgNanti = mkgPada(nilai("f-mkt"), nilai("f-mkb"), tmtLama, tmtBaru);
-    var lama = cariGaji(gol, mkgSekarang), baru = cariGaji(gol, mkgNanti);
+    var lama = cariGaji(gol, mkgSekarang, status), baru = cariGaji(gol, mkgNanti, status);
+    var dasar = status === "PPPK" ? "Perpres 11/2024" : "PP 5/2024";
     var ket = q("#f-otomatis");
     if(!ket) return;
     if(lama === null && baru === null){
-      ket.innerHTML = '<span class="sj-row-meta">Tabel gaji untuk golongan ' + esc(gol) +
-        ' belum diisi, jadi kolom gaji diisi manual.</span>';
+      ket.innerHTML = '<span class="sj-row-meta">Tabel gaji ' + esc(status) + ' untuk golongan ' +
+        esc(gol) + ' belum diisi, jadi kolom gaji diisi manual sesuai SK.</span>';
       return;
     }
     if(lama !== null && !nilai("f-gajilama")) q("#f-gajilama").value = Number(lama).toLocaleString("id-ID");
     if(baru !== null && !nilai("f-gajibaru")) q("#f-gajibaru").value = Number(baru).toLocaleString("id-ID");
-    ket.innerHTML = '<span class="sj-info">Menurut PP 5/2024, golongan ' + esc(gol) +
+    ket.innerHTML = '<span class="sj-info">Menurut ' + dasar + ', ' + esc(status) + ' golongan ' + esc(gol) +
       ' dengan masa kerja ' + mkgNanti + ' tahun bergaji pokok ' + rupiah(baru) +
       '. Angkanya boleh Anda ubah bila berbeda dengan SK.</span>';
     hitung();
   }
+  q("#f-status").addEventListener("change", function(){
+    q("#f-golongan").innerHTML = pilihanGolongan(null, this.value);
+    q("#f-gajilama").value = ""; q("#f-gajibaru").value = "";
+    isiOtomatis();
+  });
   ["f-golongan","f-mkt","f-mkb"].forEach(function(id){
     q("#"+id).addEventListener("change", isiOtomatis);
   });
@@ -1116,6 +1162,7 @@ function isiForm(){
     tampilGalat("");
     var f = {
       pangkat: bersihkan(nilai("f-pangkat")), golongan: nilai("f-golongan"),
+      status: nilai("f-status") || "PNS",
       jabatan: bersihkan(nilai("f-jabatan")), unit: bersihkan(nilai("f-unit")),
       mkt: angkaSaja(nilai("f-mkt")), mkb: angkaSaja(nilai("f-mkb")),
       nosk: bersihkan(nilai("f-nosk"), 60), tmtLama: nilai("f-tmtlama"), tmtBaru: nilai("f-tmtbaru"),
@@ -1152,6 +1199,7 @@ function isiForm(){
         return sb.from("pengajuan").insert({
           pegawai_id: S.sesi.id, nip: S.sesi.nip, nama: S.sesi.nama,
           pangkat: f.pangkat, golongan: f.golongan, jabatan: f.jabatan, unit: f.unit,
+          status_pegawai: f.status,
           masa_kerja: (f.mkt||0) + " tahun " + (f.mkb||0) + " bulan",
           mkg_tahun: Number(f.mkt)||0, mkg_bulan: Number(f.mkb)||0,
           no_sk: f.nosk, tmt_lama: f.tmtLama, tmt_baru: f.tmtBaru,
@@ -1296,28 +1344,47 @@ function isiAkun(){
         '<button class="sj-btn sj-btn-halus" id="k-acak">Buatkan</button></span></label>' +
       '<label class="sj-field"><span>Peran</span><select id="k-peran">' +
         '<option value="admin">Admin kepegawaian</option><option value="pegawai">Pegawai</option></select></label>' +
+      '<label class="sj-field"><span>Status kepegawaian</span><select id="k-status">' +
+        pilihanStatus("PNS") + '</select></label>' +
     '</div>' +
     '<p class="sj-bantuan">Catat kata sandi awalnya dan sampaikan langsung ke yang bersangkutan. Ia akan diminta menggantinya saat pertama kali masuk.</p>' +
     '<div id="galat" class="sembunyi"></div>' +
     '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="k-buat">Buat akun</button></div></div>' +
-  '<div class="sj-panel-head sj-mt"><h2>Akun terdaftar</h2></div>';
+  '<div class="sj-panel-head sj-mt"><h2>Akun terdaftar</h2>' +
+    '<input class="sj-cari" id="k-cari" value="' + esc(S.cariAkun) + '" ' +
+      'placeholder="Cari nama atau NIP"></div>';
+
+  /* Pencarian dikerjakan di peramban atas daftar yang sudah
+     dimuat, jadi hasilnya muncul seketika tanpa menunggu server. */
+  var cari = S.cariAkun.trim().toLowerCase();
+  var tersaring = !cari ? S.akun : S.akun.filter(function(a){
+    return String(a.nama||"").toLowerCase().indexOf(cari) >= 0 ||
+           String(a.nip||"").indexOf(cari) >= 0;
+  });
 
   if(!S.akun.length){
     html += '<p class="sj-bantuan">Belum ada akun.</p>';
+  } else if(!tersaring.length){
+    html += '<p class="sj-bantuan">Tidak ada akun yang cocok dengan “' + esc(S.cariAkun) + '”.</p>';
   } else {
+    if(cari) html += '<p class="sj-bantuan">' + tersaring.length + ' dari ' + S.akun.length + ' akun.</p>';
     html += '<div class="sj-tabel"><div class="sj-thead sj-row4"><span>Nama</span><span>Peran</span>' +
       '<span>Dibuat</span><span>Tindakan</span></div>' +
-      S.akun.map(function(a){
-        var tindakan = a.id === S.sesi.id
-          ? '<span class="sj-row-meta">akun Anda</span>'
-          : '<button class="sj-btn sj-btn-teks" data-aksi="reset" data-id="' + a.id + '">Setel ulang sandi</button>' +
-            '<button class="sj-btn sj-btn-teks" data-aksi="peran" data-id="' + a.id + '">Jadikan ' +
-              (a.peran === "admin" ? "pegawai" : "admin") + '</button>' +
-            '<button class="sj-btn sj-btn-teks sj-hapus" data-aksi="hapus" data-id="' + a.id + '">Nonaktifkan</button>';
+      tersaring.map(function(a){
+        var tindakan =
+          '<button class="sj-btn sj-btn-teks" data-aksi="ubah" data-id="' + a.id + '">Ubah data</button>' +
+          (a.id === S.sesi.id ? '<span class="sj-row-meta">akun Anda</span>'
+            : '<button class="sj-btn sj-btn-teks" data-aksi="reset" data-id="' + a.id + '">Setel ulang sandi</button>' +
+              '<button class="sj-btn sj-btn-teks" data-aksi="peran" data-id="' + a.id + '">Jadikan ' +
+                (a.peran === "admin" ? "pegawai" : "admin") + '</button>' +
+              '<button class="sj-btn sj-btn-teks sj-hapus" data-aksi="hapus" data-id="' + a.id + '">Nonaktifkan</button>');
+        var st = a.statusPegawai || "PNS";
         return '<div class="sj-trow sj-row4 sj-statis">' +
-          '<span class="sj-td"><strong>' + esc(a.nama) + '</strong><span class="sj-row-meta">' + esc(a.nip) + '</span></span>' +
+          '<span class="sj-td"><strong>' + esc(a.nama) + '</strong><span class="sj-row-meta">' + esc(a.nip) +
+            ' · ' + esc((a.profil && a.profil.golongan) || "—") + '</span></span>' +
           '<span class="sj-td"><span class="sj-badge ' + (a.peran === "admin" ? "sj-badge-biru" : "sj-badge-netral") + '">' +
-            (a.peran === "admin" ? "Admin" : "Pegawai") + '</span></span>' +
+            (a.peran === "admin" ? "Admin" : "Pegawai") + '</span> ' +
+            '<span class="sj-badge ' + (st === "PPPK" ? "sj-badge-amber" : "sj-badge-netral") + '">' + esc(st) + '</span></span>' +
           '<span class="sj-td sj-row-meta">' + jamTanggal(a.dibuat) + '</span>' +
           '<span class="sj-td sj-td-aksi">' + tindakan + '</span></div>';
       }).join("") + '</div>';
@@ -1326,12 +1393,115 @@ function isiAkun(){
   q("#isi").innerHTML = html;
   q("#k-acak").addEventListener("click", function(){ q("#k-sandi").value = sandiAcak(); });
   q("#k-buat").addEventListener("click", buatAkun);
+  q("#k-cari").addEventListener("input", function(){
+    S.cariAkun = this.value;
+    var pos = this.selectionStart;
+    isiAkun();
+    var baru = q("#k-cari");
+    baru.focus(); baru.setSelectionRange(pos, pos);
+  });
   pasang("[data-aksi]", "click", function(){
     var id = this.dataset.id;
+    if(this.dataset.aksi === "ubah")  return bukaUbahAkun(id);
     if(this.dataset.aksi === "peran") return ubahPeran(id);
     if(this.dataset.aksi === "reset") return resetSandi(id);
     return nonaktifkanAkun(id);
   }, q("#isi"));
+}
+
+/* ------------------------------------------------------------
+   Admin mengubah data akun: nama, NIP, status, golongan.
+
+   NIP ditangani terpisah lewat Edge Function, karena NIP bukan
+   sekadar catatan — ia dipetakan menjadi alamat masuk
+   <nip>@simoji.local. Mengubahnya di tabel profil saja akan
+   membuat orangnya tetap harus masuk dengan NIP lama.
+   ------------------------------------------------------------ */
+function bukaUbahAkun(id){
+  var a = S.akun.filter(function(x){ return x.id === id; })[0];
+  if(!a) return;
+  var p = a.profil || {};
+  var st = a.statusPegawai || "PNS";
+
+  lapis.innerHTML =
+  '<div class="sj-tirai" id="tirai"><div class="sj-laci sj-laci-kecil" id="laci">' +
+    '<div class="sj-laci-head"><div><h2>Ubah data akun</h2>' +
+      '<p class="sj-row-meta">' + esc(a.nama) + ' · ' + esc(a.nip) + '</p></div>' +
+      '<button class="sj-btn sj-btn-teks" data-tutup="1">Tutup</button></div>' +
+    '<div class="sj-mt">' +
+      '<label class="sj-field"><span>Nama lengkap</span><input id="e-nama" value="' + esc(a.nama) + '"></label>' +
+      '<label class="sj-field"><span>NIP</span><input id="e-nip" inputmode="numeric" value="' + esc(a.nip) + '"></label>' +
+      '<label class="sj-field"><span>Status kepegawaian</span><select id="e-status">' +
+        pilihanStatus(st) + '</select></label>' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="e-golongan">' +
+        pilihanGolongan(p.golongan, st) + '</select></label>' +
+      '<label class="sj-field"><span>Pangkat</span><input id="e-pangkat" value="' + esc(p.pangkat||"") + '"></label>' +
+    '</div>' +
+    '<p class="sj-bantuan">Mengubah NIP sekaligus mengubah cara orang itu masuk. ' +
+      'Beri tahu NIP barunya, karena NIP lama langsung tidak berlaku.</p>' +
+    '<div id="galat" class="sembunyi"></div>' +
+    '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="e-simpan">Simpan perubahan</button>' +
+      '<button class="sj-btn sj-btn-halus" data-tutup="1">Batal</button></div>' +
+  '</div></div>';
+
+  q("#laci").addEventListener("click", function(e){ e.stopPropagation(); });
+  q("#tirai").addEventListener("click", tutupLapis);
+  pasang("[data-tutup]", "click", tutupLapis, lapis);
+  document.addEventListener("keydown", escTutup);
+  q("#e-status").addEventListener("change", function(){
+    q("#e-golongan").innerHTML = pilihanGolongan(null, this.value);
+  });
+
+  q("#e-simpan").addEventListener("click", function(){
+    var tombol = this;
+    tampilGalat("");
+    var nama = bersihkan(nilai("e-nama"));
+    var nip  = angkaSaja(nilai("e-nip"));
+    if(nama.length < 3) return tampilGalat("Nama tidak boleh kosong.");
+    if(nip.length < 8)  return tampilGalat("NIP harus berupa angka, minimal 8 digit.");
+
+    tombol.disabled = true;
+    tombol.textContent = "Menyimpan…";
+
+    var nipBerubah = nip !== String(a.nip);
+    var langkah = nipBerubah
+      ? sb.functions.invoke("reset-sandi", { body: { user_id: id, nip_baru: nip } })
+          .then(function(r){
+            if(r.error) throw r.error;
+            if(r.data && r.data.error) throw new Error(r.data.error);
+          })
+      : Promise.resolve();
+
+    langkah
+      .then(function(){
+        return sb.from("profil").update({
+          nama: nama,
+          status_pegawai: nilai("e-status"),
+          golongan: nilai("e-golongan"),
+          pangkat: bersihkan(nilai("e-pangkat"))
+        }).eq("id", id);
+      })
+      .then(function(r){
+        if(r.error) throw r.error;
+        return catat("Ubah data akun", a.nama + (nipBerubah ? " · NIP menjadi " + nip : ""));
+      })
+      .then(muatData)
+      .then(function(){
+        tutupLapis();
+        gambarIsi();
+        kabar(nipBerubah
+          ? "Data tersimpan. NIP barunya " + nip + " — sampaikan ke yang bersangkutan."
+          : "Data akun tersimpan.");
+      })
+      .catch(function(e){
+        tombol.disabled = false;
+        tombol.textContent = "Simpan perubahan";
+        var t = (e && e.message) || "";
+        tampilGalat(/not found|404|Failed to send/i.test(t)
+          ? "Edge Function reset-sandi belum diperbarui di Supabase, jadi NIP belum bisa diubah."
+          : pesanGalat(e));
+      });
+  });
 }
 
 /* Setel ulang sandi orang lain hanya bisa dilakukan di server,
@@ -1452,7 +1622,7 @@ function buatAkun(){
   }).then(function(idBaru){
     return tungguProfil(idBaru).then(function(){
       return sb.from("profil")
-        .update({ peran: peran, nama: nama, wajib_ganti: true })
+        .update({ peran: peran, nama: nama, wajib_ganti: true, status_pegawai: nilai("k-status") || "PNS" })
         .eq("id", idBaru)
         .select("id,peran,nama")
         .maybeSingle();
@@ -1546,6 +1716,7 @@ function bukaDetail(id, peran){
       (d.status === "disetujui" ? ' <button class="sj-btn sj-btn-halus" id="d-cetak">Cetak nota usulan</button>' : "") +
     '</div>' +
     '<div class="sj-lampiran" id="d-lampiran"><div class="sj-lampiran-kosong">Membuka lampiran…</div></div>' +
+    baris("Status kepegawaian", esc(d.statusPegawai || "PNS")) +
     baris("Pangkat / golongan", esc(d.pangkat) + " · " + esc(d.golongan)) +
     baris("Jabatan", esc(d.jabatan) || "—") +
     baris("Unit kerja", esc(d.unit)) +
@@ -1941,23 +2112,34 @@ function isiPengingat(){
    Admin — tabel gaji pokok
    ============================================================ */
 function isiGaji(){
+  var statusKini = S.statusGaji || "PNS";
+  var daftarGol = golonganUntuk(statusKini);
   var perGol = {};
-  S.gaji.forEach(function(b){ (perGol[b.golongan] = perGol[b.golongan] || []).push(b); });
-  var kosong = GOLONGAN.filter(function(g){ return !perGol[g]; });
+  S.gaji.forEach(function(b){
+    if((b.status || "PNS") !== statusKini) return;
+    (perGol[b.golongan] = perGol[b.golongan] || []).push(b);
+  });
+  var kosong = daftarGol.filter(function(g){ return !perGol[g]; });
+  var dasar = statusKini === "PPPK" ? "Perpres Nomor 11 Tahun 2024" : "PP Nomor 5 Tahun 2024";
 
   var html = '<div class="sj-panel-head"><h2>Tabel gaji pokok</h2>' +
     '<button class="sj-btn sj-btn-teks" id="g-segar">Muat ulang</button></div>' +
-    '<p class="sj-bantuan">Dipakai untuk mengisi kolom gaji usulan secara otomatis. Sumbernya Lampiran PP Nomor 5 Tahun 2024. ' +
+    '<div class="sj-chips">' + STATUS_PEGAWAI.map(function(s){
+      return '<button class="sj-chip' + (statusKini === s ? " aktif" : "") + '" data-gstatus="' + s + '">' +
+        (s === "PNS" ? "PNS" : "PPPK / P3K") + '</button>';
+    }).join("") + '</div>' +
+    '<p class="sj-bantuan">Dipakai untuk mengisi kolom gaji usulan secara otomatis. Sumbernya Lampiran ' + dasar + '. ' +
     'Bila terbit peraturan gaji baru, perbarui angkanya di sini tanpa perlu mengubah kode.</p>';
 
   if(kosong.length){
-    html += '<div class="sj-galat">Golongan berikut belum ada isinya: ' + kosong.join(", ") +
+    html += '<div class="sj-galat">Golongan ' + statusKini + ' berikut belum ada isinya: ' + kosong.join(", ") +
       '. Selama kosong, pegawai golongan itu mengisi kolom gaji secara manual.</div>';
   }
 
   html += '<div class="sj-panel sj-mt"><div class="sj-panel-head"><h2>Tambah atau perbarui satu baris</h2></div>' +
     '<div class="sj-grid2">' +
-      '<label class="sj-field"><span>Golongan ruang</span><select id="g-gol">' + pilihanGolongan("IV/a") + '</select></label>' +
+      '<label class="sj-field"><span>Golongan ruang</span><select id="g-gol">' +
+        pilihanGolongan(daftarGol[0], statusKini) + '</select></label>' +
       '<label class="sj-field"><span>Masa kerja golongan mulai (tahun)</span><input id="g-mkg" inputmode="numeric" placeholder="0"></label>' +
       '<label class="sj-field"><span>Gaji pokok</span><input id="g-nilai" inputmode="numeric" placeholder="3.287.800"></label>' +
     '</div>' +
@@ -1966,7 +2148,7 @@ function isiGaji(){
     '<div id="galat" class="sembunyi"></div>' +
     '<div class="sj-aksi"><button class="sj-btn sj-btn-utama" id="g-simpan">Simpan baris</button></div></div>';
 
-  var isiTabel = GOLONGAN.filter(function(g){ return perGol[g]; }).map(function(g){
+  var isiTabel = daftarGol.filter(function(g){ return perGol[g]; }).map(function(g){
     var baris = perGol[g].slice().sort(function(a,b){ return a.mkg_min - b.mkg_min; });
     return '<div class="sj-panel-head sj-mt"><h2>Golongan ' + g + '</h2>' +
       '<span class="sj-row-meta">' + baris.length + ' jenjang</span></div>' +
@@ -1982,6 +2164,10 @@ function isiGaji(){
   q("#isi").innerHTML = html + isiTabel;
 
   q("#g-segar").addEventListener("click", function(){ muatPendukung().then(gambarIsi); });
+  pasang("[data-gstatus]", "click", function(){
+    S.statusGaji = this.dataset.gstatus;
+    isiGaji();
+  }, q("#isi"));
   q("#g-nilai").addEventListener("input", function(){
     var a = angkaSaja(this.value);
     this.value = a ? Number(a).toLocaleString("id-ID") : "";
@@ -1993,10 +2179,13 @@ function isiGaji(){
     if(mkg === "") return tampilGalat("Isi masa kerja mulai.");
     if(!gaji) return tampilGalat("Isi besaran gaji pokok.");
     tombol.disabled = true;
-    sb.from("gaji_pokok").upsert({ golongan: gol, mkg_min: Number(mkg), gaji: gaji })
+    sb.from("gaji_pokok").upsert({
+        status: statusKini, golongan: gol, mkg_min: Number(mkg), gaji: gaji,
+        dasar: statusKini === "PPPK" ? "Perpres 11/2024" : "PP 5/2024"
+      })
       .then(function(r){
         if(r.error) throw r.error;
-        return catat("Perbarui tabel gaji", gol + " masa kerja " + mkg);
+        return catat("Perbarui tabel gaji", statusKini + " " + gol + " masa kerja " + mkg);
       })
       .then(muatPendukung)
       .then(function(){ isiGaji(); kabar("Baris gaji tersimpan."); })
@@ -2005,7 +2194,8 @@ function isiGaji(){
   pasang("[data-hapus]", "click", function(){
     var bagian = this.dataset.hapus.split("|");
     if(!confirm("Hapus baris gaji " + bagian[0] + " masa kerja " + bagian[1] + " tahun?")) return;
-    sb.from("gaji_pokok").delete().eq("golongan", bagian[0]).eq("mkg_min", Number(bagian[1]))
+    sb.from("gaji_pokok").delete().eq("status", statusKini)
+      .eq("golongan", bagian[0]).eq("mkg_min", Number(bagian[1]))
       .then(muatPendukung).then(function(){ isiGaji(); kabar("Baris dihapus."); })
       .catch(function(e){ kabar(pesanGalat(e)); });
   }, q("#isi"));
