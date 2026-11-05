@@ -2449,87 +2449,165 @@ function cetakNominatif(kol, berkas){
     '.ttd{margin-top:26px;width:34%;margin-left:66%;}' +
     '.ruang{height:66px;}' +
     '.nama{font-weight:bold;text-decoration:underline;}' +
-    '@media screen{body{max-width:29cm;margin:20px auto;padding:1.5cm;background:#fff;}}' +
+    '.alat{position:sticky;top:0;background:#8C1A10;color:#fff;padding:10px 14px;' +
+      'font-family:Arial,sans-serif;font-size:13px;display:flex;gap:14px;align-items:center;}' +
+    '.alat button{font:inherit;font-weight:bold;padding:6px 16px;border:0;border-radius:2px;' +
+      'background:#fff;color:#8C1A10;cursor:pointer;}' +
+    '.lembar{outline:none;}' +
+    '@media screen{.lembar{max-width:29cm;margin:18px auto;padding:1.5cm;background:#fff;' +
+      'box-shadow:0 1px 6px rgba(0,0,0,.2);}body{background:#eee;margin:0;}}' +
+    '@media print{.alat{display:none;}.lembar{margin:0;padding:0;box-shadow:none;max-width:none;}}' +
   '</style>';
+
+  var alat = '<div class="alat"><button onclick="window.print()">Cetak</button>' +
+    '<span>Daftar ini bisa disunting dulu sebelum dicetak.</span></div>';
 
   var jendela = window.open("", "_blank");
   if(!jendela) return kabar("Jendela cetak diblokir peramban. Izinkan pop-up untuk situs ini.");
   jendela.document.write('<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">' +
-    '<title>Daftar nominatif KGB ' + esc(kol.nomor) + '</title>' + gaya + '</head><body>' + isi + '</body></html>');
+    '<title>Daftar nominatif KGB ' + esc(kol.nomor) + '</title>' + gaya + '</head><body>' +
+    alat + '<div class="lembar" contenteditable="true">' + isi + '</div></body></html>');
   jendela.document.close();
   jendela.focus();
-  setTimeout(function(){ jendela.print(); }, 400);
 }
 
 /* ============================================================
    Cetak nota usulan KGB
    ============================================================ */
+/* Nota usul KGB, mengikuti bentuk baku Bawaslu Provinsi NTB yang
+   ditujukan kepada Kepala KPPN. Seluruh halaman bisa disunting
+   langsung sebelum dicetak: kolom yang tidak diketahui aplikasi
+   — pejabat penetap SK lama, nomor naskah — dibiarkan bertitik
+   supaya jelas mana yang masih perlu diisi tangan. */
 function cetakNota(d){
   var ins = S.instansi || {};
-  var kota = ins.kota || "..............";
+  var kota = ins.kota || "Mataram";
   var hariIni = tglIndo(new Date().toISOString().slice(0,10));
-  var selisih = (d.gajiBaru||0) - (d.gajiLama||0);
   var mkgBaru = mkgPada(d.mkgTahun, d.mkgBulan, d.tmtLama, d.tmtBaru);
+  var mkgLama = mkgPada(d.mkgTahun, d.mkgBulan, d.tmtLama, d.tmtLama);
+  var statusPeg = d.statusPegawai || "PNS";
+  var dasarHukum = statusPeg === "PPPK"
+    ? "Peraturan Presiden Nomor 11 Tahun 2024"
+    : "Peraturan Pemerintah Nomor 5 Tahun 2024";
+  var titik = "…………………………………………";
+
+  function brs(no, label, isi){
+    return '<tr><td class="no">' + no + '</td><td class="l">' + label +
+      '</td><td class="t">:</td><td class="v">' + isi + '</td></tr>';
+  }
 
   var isi =
-  '<div class="kop">' +
-    '<div class="kop-nama">' + esc(ins.nama_instansi || "PEMERINTAH DAERAH") + '</div>' +
-    '<div class="kop-satker">' + esc(ins.nama_satker || "") + '</div>' +
-    '<div class="kop-alamat">' + esc(ins.alamat || "") + '</div>' +
+  '<div class="alat">' +
+    '<button onclick="window.print()">Cetak</button>' +
+    '<span>Seluruh isi nota ini bisa diklik dan disunting dulu sebelum dicetak. ' +
+    'Bagian bertitik perlu Anda isi sendiri.</span>' +
   '</div>' +
-  '<h1>Nota Usulan Kenaikan Gaji Berkala</h1>' +
-  '<p class="nomor">Nomor: ' + esc(d.noNota || "……/……/" + new Date().getFullYear()) + '</p>' +
-  '<p>Bersama ini diusulkan kenaikan gaji berkala bagi pegawai berikut:</p>' +
-  '<table>' +
-    '<tr><td class="l">1. Nama</td><td>: ' + esc(d.nama) + '</td></tr>' +
-    '<tr><td class="l">2. NIP</td><td>: ' + esc(d.nip) + '</td></tr>' +
-    '<tr><td class="l">3. Pangkat / golongan ruang</td><td>: ' + esc(d.pangkat) + ' / ' + esc(d.golongan) + '</td></tr>' +
-    '<tr><td class="l">4. Jabatan</td><td>: ' + esc(d.jabatan || "-") + '</td></tr>' +
-    '<tr><td class="l">5. Unit kerja</td><td>: ' + esc(d.unit) + '</td></tr>' +
-    '<tr><td class="l">6. Surat KGB terakhir</td><td>: ' + esc(d.noSk || "-") + ', TMT ' + tglIndo(d.tmtLama) + '</td></tr>' +
-    '<tr><td class="l">7. Gaji pokok lama</td><td>: ' + rupiah(d.gajiLama) + '</td></tr>' +
-    '<tr><td class="l">8. Gaji pokok baru</td><td>: ' + rupiah(d.gajiBaru) +
-      (selisih > 0 ? ' (naik ' + rupiah(selisih) + ')' : "") + '</td></tr>' +
-    '<tr><td class="l">9. Masa kerja golongan</td><td>: ' + mkgBaru + ' tahun pada saat TMT baru</td></tr>' +
-    '<tr><td class="l">10. Terhitung mulai tanggal</td><td>: ' + tglIndo(d.tmtBaru) + '</td></tr>' +
-    '<tr><td class="l">11. Dasar</td><td>: Peraturan Pemerintah Nomor 5 Tahun 2024</td></tr>' +
-  '</table>' +
-  '<p>Berkas pendukung berupa surat pengantar, surat KGB terakhir, SK kenaikan pangkat terakhir, ' +
-  'serta SKP dua tahun terakhir telah diperiksa dan dinyatakan lengkap.</p>' +
-  '<p>Demikian usulan ini disampaikan untuk dapat diproses sebagaimana mestinya.</p>' +
-  '<div class="ttd">' +
-    '<div>' + esc(kota) + ', ' + hariIni + '</div>' +
-    '<div>' + esc(ins.pejabat_jabatan || "Kepala Bagian Kepegawaian") + '</div>' +
-    '<div class="ruang"></div>' +
-    '<div class="nama">' + esc(ins.pejabat_nama || "……………………………………") + '</div>' +
-    '<div>NIP. ' + esc(ins.pejabat_nip || "……………………………") + '</div>' +
+  '<div class="lembar" contenteditable="true">' +
+    '<table class="kepala"><tr>' +
+      '<td class="kiri">' +
+        '<div>Nomor&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ' + esc(d.noNota || "…………………………") + '</div>' +
+        '<div>Sifat&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Segera</div>' +
+        '<div>Lampiran : -</div>' +
+        '<div>Perihal&nbsp;&nbsp;&nbsp;: <b>Kenaikan Gaji Berkala</b></div>' +
+      '</td>' +
+      '<td class="kanan">' + esc(kota) + ', ' + hariIni + '</td>' +
+    '</tr></table>' +
+
+    '<div class="tujuan">' +
+      '<div>Kepada Yth:</div>' +
+      '<div class="tebal">KEPALA KANTOR PELAYANAN</div>' +
+      '<div class="tebal">PERBENDAHARAAN NEGARA</div>' +
+      '<div>di</div>' +
+      '<div class="menjorok">' + esc(kota) + '</div>' +
+    '</div>' +
+
+    '<p class="pembuka">Dengan ini diberitahukan, bahwa sehubungan telah dipenuhinya ' +
+      'masa kerja dan syarat-syarat lainnya kepada :</p>' +
+
+    '<table class="rinci">' +
+      brs("1.", "Nama", '<b>' + esc(d.nama) + '</b>') +
+      brs("2.", "NIP", esc(d.nip)) +
+      brs("3.", "Pangkat", esc(d.pangkat) + " / " + esc(d.golongan)) +
+      brs("4.", "Kantor/Tempat", esc(d.unit || ins.nama_satker || "")) +
+      brs("5.", "Gaji Pokok lama", rupiah(d.gajiLama)) +
+    '</table>' +
+
+    '<p class="judul-bagian">Atas dasar Surat Keputusan terakhir Gaji/Pangkat yang ditetapkan :</p>' +
+    '<table class="rinci">' +
+      brs("a.", "Oleh Pejabat", titik) +
+      brs("b.", "Tanggal", tglIndo(d.tmtLama)) +
+      brs("c.", "Nomor", esc(d.noSk || titik)) +
+      brs("d.", "Tanggal Mulai Berlakunya Gaji tersebut", tglIndo(d.tmtLama)) +
+      brs("e.", "Masa kerja golongan pada Tanggal tersebut", mkgLama + " tahun") +
+    '</table>' +
+
+    '<p class="judul-bagian">Diberikan Kenaikan Gaji Berkala Hingga memperoleh :</p>' +
+    '<table class="rinci">' +
+      brs("1.", "Gaji Pokok Baru", '<b>' + rupiah(d.gajiBaru) + '</b>') +
+      brs("2.", "Berdasarkan Masa Kerja", mkgBaru + " tahun") +
+      brs("3.", "Dalam Golongan/Ruang", esc(d.golongan)) +
+      brs("4.", "Mulai Tanggal", tglIndo(d.tmtBaru)) +
+      brs("5.", "Kenaikan Gaji Berkala Berikutnya", tglIndo(tambahTahun(d.tmtBaru, 2))) +
+    '</table>' +
+
+    '<p class="penutup">Diharapkan agar sesuai dengan ' + dasarHukum + ' kepada Pegawai tersebut ' +
+      'dapat dibayarkan penghasilannya berdasarkan gaji pokoknya yang baru.</p>' +
+
+    '<div class="ttd">' +
+      '<div class="tebal">' + esc(ins.pejabat_jabatan || "Plt. Kepala Sekretariat,") + '</div>' +
+      '<div class="ruang"></div>' +
+      '<div class="tebal">' + esc(ins.pejabat_nama || titik) + '</div>' +
+    '</div>' +
+
+    '<div class="tembusan">' +
+      '<div>Tembusan:</div>' +
+      '<ol>' +
+        '<li>Sekretaris Jenderal Badan Pengawas Pemilihan Umum;</li>' +
+        '<li>Ketua Bawaslu Provinsi NTB;</li>' +
+        '<li>Anggota Bawaslu Provinsi NTB;</li>' +
+        '<li>Pegawai yang bersangkutan; dan</li>' +
+        '<li>Pertinggal.</li>' +
+      '</ol>' +
+    '</div>' +
   '</div>';
 
   var gaya = '<style>' +
-    '@page{size:A4;margin:2.5cm 2.5cm 2cm 3cm;}' +
-    'body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.5;color:#000;}' +
-    '.kop{text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:22px;}' +
-    '.kop-nama{font-size:14pt;font-weight:bold;text-transform:uppercase;}' +
-    '.kop-satker{font-size:13pt;font-weight:bold;text-transform:uppercase;}' +
-    '.kop-alamat{font-size:10pt;}' +
-    'h1{font-size:13pt;text-align:center;text-decoration:underline;margin:0 0 4px;}' +
-    '.nomor{text-align:center;margin:0 0 22px;}' +
-    'table{width:100%;border-collapse:collapse;margin:14px 0 18px;}' +
-    'td{vertical-align:top;padding:2px 0;}' +
-    'td.l{width:42%;}' +
-    '.ttd{margin-top:34px;width:45%;margin-left:55%;}' +
-    '.ruang{height:70px;}' +
-    '.nama{font-weight:bold;text-decoration:underline;}' +
-    '@media screen{body{max-width:21cm;margin:20px auto;padding:2cm;background:#fff;}}' +
+    '@page{size:A4;margin:2cm 2cm 2cm 3cm;}' +
+    'body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.45;color:#000;margin:0;}' +
+    '.lembar{outline:none;}' +
+    '.kepala{width:100%;border-collapse:collapse;margin-bottom:18px;}' +
+    '.kepala td{vertical-align:top;padding:0;}' +
+    '.kepala .kanan{text-align:right;white-space:nowrap;}' +
+    '.tujuan{margin-bottom:16px;}' +
+    '.tebal{font-weight:bold;}' +
+    '.menjorok{margin-left:28px;}' +
+    '.pembuka{margin:0 0 10px;text-align:justify;}' +
+    '.judul-bagian{font-weight:bold;text-decoration:underline;margin:14px 0 6px;}' +
+    '.rinci{width:100%;border-collapse:collapse;margin:0 0 6px;}' +
+    '.rinci td{vertical-align:top;padding:2px 0;}' +
+    '.rinci .no{width:26px;}' +
+    '.rinci .l{width:44%;}' +
+    '.rinci .t{width:14px;}' +
+    '.penutup{margin:16px 0 0;text-align:justify;}' +
+    '.ttd{margin-top:26px;width:46%;margin-left:54%;text-align:center;}' +
+    '.ruang{height:78px;}' +
+    '.tembusan{margin-top:26px;font-size:11pt;}' +
+    '.tembusan ol{margin:4px 0 0 18px;padding:0;}' +
+    '.alat{position:sticky;top:0;background:#8C1A10;color:#fff;padding:10px 14px;' +
+      'font-family:Arial,sans-serif;font-size:13px;display:flex;gap:14px;align-items:center;}' +
+    '.alat button{font:inherit;font-weight:bold;padding:6px 16px;border:0;border-radius:2px;' +
+      'background:#fff;color:#8C1A10;cursor:pointer;}' +
+    '@media screen{.lembar{max-width:21cm;margin:18px auto;padding:2cm;background:#fff;' +
+      'box-shadow:0 1px 6px rgba(0,0,0,.2);}body{background:#eee;}}' +
+    '@media print{.alat{display:none;}.lembar{margin:0;padding:0;box-shadow:none;max-width:none;}}' +
   '</style>';
 
   var jendela = window.open("", "_blank");
   if(!jendela) return kabar("Jendela cetak diblokir peramban. Izinkan pop-up untuk situs ini.");
   jendela.document.write('<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">' +
-    '<title>Nota usulan KGB - ' + esc(d.nama) + '</title>' + gaya + '</head><body>' + isi + '</body></html>');
+    '<title>Nota Usul KGB - ' + esc(d.nama) + '</title>' + gaya + '</head><body>' + isi + '</body></html>');
   jendela.document.close();
   jendela.focus();
-  setTimeout(function(){ jendela.print(); }, 400);
   catat("Cetak nota usulan", d.nama);
 }
 
